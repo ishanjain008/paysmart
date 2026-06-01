@@ -27,7 +27,37 @@ function matchPlatform(source: string): Platform | null {
   return null;
 }
 
-// ── Live prices via SerpAPI Google Shopping ───────────────────────
+// ── Flipkart price via Google organic search ──────────────────────
+// Flipkart blocks Google Shopping indexing so we search google.co.in
+// restricted to flipkart.com and parse the price out of the snippet.
+async function fetchFlipkartPrice(query: string): Promise<number | null> {
+  const apiKey = process.env.SERPAPI_KEY;
+  if (!apiKey) return null;
+
+  const url =
+    `https://www.searchapi.io/api/v1/search` +
+    `?engine=google` +
+    `&q=${encodeURIComponent(query + ' site:flipkart.com')}` +
+    `&gl=in&hl=en` +
+    `&api_key=${apiKey}`;
+
+  try {
+    const res = await fetch(url, { next: { revalidate: 10800 } });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    for (const result of (data.organic_results ?? []).slice(0, 5)) {
+      const text = (result.snippet ?? '') + ' ' + (result.title ?? '');
+      const match = text.match(/₹\s*([\d,]+)/);
+      if (match) return parseInt(match[1].replace(/,/g, ''), 10);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Live prices via SearchAPI Google Shopping ─────────────────────
 async function fetchLivePrices(query: string): Promise<Partial<Record<Platform, number>>> {
   const apiKey = process.env.SERPAPI_KEY;
   if (!apiKey) return {};
@@ -119,10 +149,14 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q') ?? '';
   if (!q) return Response.json([]);
 
-  const [live, mock] = await Promise.all([
+  const [live, flipkartPrice, mock] = await Promise.all([
     fetchLivePrices(q),
+    fetchFlipkartPrice(q),
     Promise.resolve(mockFallback(q)),
   ]);
+
+  // Merge Flipkart live price into live results
+  if (flipkartPrice) live['flipkart'] = flipkartPrice;
 
   const result: PlatformPrice[] = PLATFORMS.map((platform) => {
     // Prefer live price; fall back to mock with slight variance
