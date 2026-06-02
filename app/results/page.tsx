@@ -1,16 +1,21 @@
 'use client';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Smartphone, ChevronRight, Clock } from 'lucide-react';
-import { BottomNav, TopNav } from '@/components/Nav';
+import { ArrowRight, RefreshCw } from 'lucide-react';
+import { Playfair_Display } from 'next/font/google';
+import { DesktopNav } from '@/components/DesktopNav';
 import { fetchPrices } from '@/lib/fetchPrices';
 import { PlatformPrice } from '@/lib/calculator';
 import { PLATFORMS, Platform } from '@/data/offers';
 import { useSearchHistory } from '@/lib/useSearchHistory';
 
+const playfair = Playfair_Display({ subsets: ['latin'] });
+
 function fmt(n: number) {
   return '₹' + n.toLocaleString('en-IN');
 }
+
+const PLATFORM_ORDER: Platform[] = ['amazon', 'flipkart', 'croma', 'reliance_digital', 'tata_cliq'];
 
 function ResultsContent() {
   const params = useSearchParams();
@@ -24,16 +29,13 @@ function ResultsContent() {
     if (!query) return;
     push(query);
     setLoading(true);
-    fetchPrices(query).then((p) => {
-      setPrices(p);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    fetchPrices(query)
+      .then((p) => { setPrices(p); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const available = prices.filter((p) => p.available);
   const lowestPrice = available.length ? Math.min(...available.map((p) => p.price)) : 0;
-
-  const platformOrder: Platform[] = ['amazon', 'flipkart', 'croma', 'reliance_digital', 'tata_cliq'];
 
   const goToRecommendation = () => {
     sessionStorage.setItem('paysmart_prices', JSON.stringify(prices));
@@ -41,95 +43,91 @@ function ResultsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col max-w-md mx-auto">
-      <TopNav back="/" />
-      <main className="flex-1 pb-24">
-        {/* Query bar */}
-        <div className="bg-gray-50 border-b border-gray-100 px-4 py-2.5 flex items-center gap-2">
-          <div className="flex-1 text-sm text-gray-600">
-            Results for <span className="font-medium text-gray-900">{query}</span>
-          </div>
-          <button onClick={() => router.push('/')} className="text-blue-600 text-xs">Change</button>
+    <div className="min-h-screen bg-white flex flex-col">
+      <DesktopNav back="/" backLabel="New search" />
+
+      <main className="flex-1 px-8 md:px-14 py-12">
+        {/* Query header */}
+        <div className="flex items-baseline gap-4 mb-2">
+          <h1 className={`${playfair.className} text-4xl md:text-5xl font-bold text-gray-900`}>
+            {query}
+          </h1>
+          <button
+            onClick={() => router.push('/')}
+            className="text-sm text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-1"
+          >
+            <RefreshCw size={12} /> Change
+          </button>
         </div>
+        <p className="text-sm text-gray-400 mb-10">
+          {loading ? 'Fetching live prices…' : `${available.length} stores · prices before your card benefits`}
+        </p>
 
-        {/* Product card */}
-        <div className="mx-4 mt-4 flex items-center gap-3 border border-gray-100 rounded-xl p-3 bg-white">
-          <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Smartphone size={24} className="text-gray-300" />
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-900 mb-0.5">{query}</div>
-            <div className="text-xs text-gray-400">Tap below to see best deal with your cards</div>
-          </div>
-        </div>
+        {/* Platform cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+          {PLATFORM_ORDER.map((platform) => {
+            const p = prices.find((x) => x.platform === platform);
+            const info = PLATFORMS[platform];
+            const isLowest = p?.available && p.price === lowestPrice && lowestPrice > 0;
 
-        {/* Platform prices */}
-        <div className="px-4 mt-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">Prices across platforms</div>
-            <div className="flex items-center gap-1 text-[10px] text-gray-400">
-              <Clock size={10} />
-              {loading ? 'Loading...' : 'Just now'}
-            </div>
-          </div>
+            return (
+              <div
+                key={platform}
+                className={`rounded-2xl border p-5 flex flex-col gap-3 transition-all ${
+                  isLowest
+                    ? 'border-blue-200 bg-blue-50 ring-2 ring-blue-200'
+                    : 'border-gray-100 bg-white hover:border-gray-200'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: info.color }} />
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    {info.name}
+                  </span>
+                </div>
 
-          <div className="space-y-2">
-            {platformOrder.map((platform) => {
-              const p = prices.find((x) => x.platform === platform);
-              const info = PLATFORMS[platform];
-              const isLowest = p?.available && p.price === lowestPrice && lowestPrice > 0;
-
-              return (
-                <div
-                  key={platform}
-                  className={`flex items-center gap-3 p-3 rounded-xl border ${
-                    isLowest ? 'border-green-200 bg-green-50' : 'border-gray-100 bg-white'
-                  }`}
-                >
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: info.color }} />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-800">{info.name}</div>
-                    {isLowest && <div className="text-[10px] text-green-600 font-medium">Lowest listed price</div>}
-                  </div>
-                  {loading || !p ? (
-                    <div className="w-16 h-4 bg-gray-100 rounded animate-pulse" />
-                  ) : p.available ? (
-                    <div className={`text-sm font-semibold ${isLowest ? 'text-green-700' : 'text-gray-800'}`}>
+                {loading ? (
+                  <div className="h-8 bg-gray-100 rounded-lg animate-pulse" />
+                ) : p?.available ? (
+                  <>
+                    <div className={`text-2xl font-bold ${isLowest ? 'text-blue-700' : 'text-gray-900'}`}>
                       {fmt(p.price)}
                     </div>
-                  ) : (
-                    <div className="text-xs text-gray-300 italic">Not available</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    {isLowest && (
+                      <span className="text-[11px] font-semibold text-blue-600 bg-blue-100 rounded-full px-2.5 py-0.5 self-start">
+                        Lowest
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-300 italic mt-1">Not listed</div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        <div className="text-center text-[10px] text-gray-300 mt-3">
-          Prices shown before card benefits
-        </div>
+        <p className="text-xs text-gray-300 mb-8">Prices above are listed prices — before any card offers or cashback.</p>
 
-        {/* CTA */}
         {!loading && available.length > 0 && (
-          <div className="px-4 mt-6">
-            <button
-              onClick={goToRecommendation}
-              className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
-            >
-              See best deal with my cards
-              <ChevronRight size={16} />
-            </button>
-          </div>
+          <button
+            onClick={goToRecommendation}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-2xl text-base transition-colors"
+          >
+            See best deal with my cards
+            <ArrowRight size={18} />
+          </button>
         )}
 
         {!loading && available.length === 0 && (
-          <div className="px-4 mt-8 text-center text-sm text-gray-400">
-            No prices found for &ldquo;{query}&rdquo;. Try a different product name.
+          <div className="py-16 text-center">
+            <p className="text-gray-400 mb-4">No prices found for &ldquo;{query}&rdquo;.</p>
+            <button onClick={() => router.push('/')} className="text-blue-600 text-sm font-medium hover:underline">
+              Try a different search →
+            </button>
           </div>
         )}
       </main>
-      <BottomNav />
     </div>
   );
 }
