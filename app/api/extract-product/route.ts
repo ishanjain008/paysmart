@@ -20,32 +20,77 @@ function getPlatformFromUrl(url: string): Platform | null {
 
 async function extractFromUrl(url: string): Promise<string | null> {
   try {
+    // For Amazon URLs, try to extract from the URL itself first
+    if (url.includes('amazon.')) {
+      const asinMatch = url.match(/\/dp\/([A-Z0-9]+)/);
+      const titleMatch = url.match(/^.*?\/([^/]+?)(?:\/dp\/|$)/);
+      if (titleMatch) {
+        let title = titleMatch[1]
+          .replace(/-/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        // Clean up common URL artifacts
+        title = title.replace(/ref=.*$/i, '').trim();
+        if (title.length > 5) return title;
+      }
+    }
+
+    // For Flipkart URLs, extract product name from URL
+    if (url.includes('flipkart.')) {
+      const pathMatch = url.match(/\/p\/([^?]+)/);
+      if (pathMatch) {
+        let title = pathMatch[1]
+          .replace(/-/g, ' ')
+          .replace(/[a-z0-9]{16}$/, '') // Remove SKU
+          .trim();
+        if (title.length > 5) return title;
+      }
+    }
+
+    // Fetch the page content with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     const res = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!res.ok) return null;
 
     const html = await res.text();
 
-    // Try to extract from Open Graph meta tag
+    // Try to extract from Open Graph meta tag (most reliable)
     const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i);
-    if (ogTitleMatch) return ogTitleMatch[1];
+    if (ogTitleMatch) {
+      let title = ogTitleMatch[1].trim();
+      title = title.replace(/\s*[-|]\s*(Amazon|Flipkart|Croma|Vijay Sales|Reliance Digital|Online Shopping|Buy.*?|Price.*?|Product).*$/i, '');
+      return title.trim();
+    }
 
     // Try to extract from title tag
     const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
     if (titleMatch) {
       let title = titleMatch[1];
-      // Remove common suffixes like " - Amazon" or " | Flipkart"
       title = title.replace(/\s*[-|]\s*(Amazon|Flipkart|Croma|Vijay Sales|Reliance Digital|Online Shopping|Buy.*?|Price.*?|Product).*$/i, '');
-      return title.trim();
+      if (title.trim().length > 5) return title.trim();
     }
 
     // Try to extract from h1 tag
     const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-    if (h1Match) return h1Match[1].trim();
+    if (h1Match) {
+      const title = h1Match[1].trim();
+      if (title.length > 5) return title;
+    }
+
+    // Last resort: look for common product title patterns
+    const spanMatch = html.match(/<span[^>]*id=["']productTitle["'][^>]*>([^<]+)<\/span>/i);
+    if (spanMatch) return spanMatch[1].trim();
 
     return null;
   } catch (error) {
