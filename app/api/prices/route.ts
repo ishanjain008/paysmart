@@ -85,10 +85,10 @@ function buildAmazonLink(url: string | undefined): string | undefined {
   return undefined;
 }
 
-// Fetch Amazon product link via organic search
-async function fetchAmazonLink(query: string): Promise<string | undefined> {
+// Fetch Amazon product link and price via organic search
+async function fetchAmazonLinkAndPrice(query: string): Promise<{ link?: string; price?: number }> {
   const serperKey = process.env.SERPER_KEY;
-  if (!serperKey) return undefined;
+  if (!serperKey) return {};
   try {
     const res = await fetch('https://google.serper.dev/search', {
       method: 'POST',
@@ -96,17 +96,26 @@ async function fetchAmazonLink(query: string): Promise<string | undefined> {
       body: JSON.stringify({ q: `${query} site:amazon.in`, gl: 'in', hl: 'en', num: 5 }),
       next: { revalidate: 10800 },
     });
-    if (!res.ok) return undefined;
+    if (!res.ok) return {};
     const data = await res.json();
     for (const r of (data.organic ?? [])) {
       if (r.link && r.link.includes('/dp/')) {
-        return buildAmazonLink(r.link);
+        const link = buildAmazonLink(r.link);
+        // Try to extract price from snippet
+        let price: number | undefined;
+        if (r.snippet) {
+          const priceMatch = r.snippet.match(/₹[\s,]*([0-9,]+)/);
+          if (priceMatch) {
+            price = parseInt(priceMatch[1].replace(/,/g, ''), 10);
+          }
+        }
+        return { link, price };
       }
     }
   } catch (e) {
-    // Serper API failure - continue without Amazon direct link
+    // Serper API failure
   }
-  return undefined;
+  return {};
 }
 
 // ── Route handler ─────────────────────────────────────────────────
@@ -120,12 +129,12 @@ export async function GET(request: NextRequest) {
   const mockPrices = mockFallback(q);
   const live: Partial<Record<Platform, { price: number; title?: string; link?: string }>> = {};
 
-  // For Amazon, try to get affiliate link
-  if (mockPrices['amazon']) {
-    const amazonLink = await fetchAmazonLink(q);
+  // For Amazon, fetch real price and affiliate link
+  const amazonData = await fetchAmazonLinkAndPrice(q);
+  if (amazonData.link || mockPrices['amazon']) {
     live['amazon'] = {
-      price: mockPrices['amazon'],
-      ...(amazonLink && { link: amazonLink }),
+      price: amazonData.price ?? mockPrices['amazon'] ?? 0,
+      ...(amazonData.link && { link: amazonData.link }),
     };
   }
 
