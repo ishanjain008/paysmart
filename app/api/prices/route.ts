@@ -38,7 +38,7 @@ function serperHeaders() {
 // Google Shopping — covers Amazon, Reliance Digital, Croma
 async function fetchLivePrices(
   query: string
-): Promise<{ prices: Partial<Record<Platform, { price: number; title?: string; image?: string }>>; productImage: string | null }> {
+): Promise<{ prices: Partial<Record<Platform, { price: number; title?: string; image?: string; link?: string }>>; productImage: string | null }> {
   if (!process.env.SERPER_KEY) return { prices: {}, productImage: null };
   try {
     const res = await fetch('https://google.serper.dev/shopping', {
