@@ -49,7 +49,7 @@ export async function getPriceHistory(productTitle: string): Promise<PriceSnapsh
       .limit(90)
       .get();
 
-    return snapshot.docs.map(doc => ({
+    return snapshot.docs.map((doc: any) => ({
       productTitle,
       timestamp: doc.data().timestamp,
       prices: doc.data().prices,
