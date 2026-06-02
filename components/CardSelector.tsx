@@ -41,6 +41,91 @@ function CardRow({ card, selected, onToggle }: { card: Card; selected: boolean; 
   );
 }
 
+function DropdownSection({
+  type, cardsByGroup, selectedIds, onToggle,
+  selectedBank, setSelectedBank,
+  label, placeholder, emptyText, subLabel,
+}: {
+  type: CardType;
+  cardsByGroup: Map<string, Card[]>;
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  selectedBank: string;
+  setSelectedBank: (b: string) => void;
+  label: string;
+  placeholder: string;
+  emptyText: string;
+  subLabel: string;
+}) {
+  const groups = Array.from(cardsByGroup.keys());
+  const cardsForGroup = selectedBank ? (cardsByGroup.get(selectedBank) ?? []) : [];
+  const selectedOfType = selectedIds.filter(id => CARDS.find(c => c.id === id && c.type === type));
+
+  return (
+    <div>
+      {/* Dropdown */}
+      <div className="relative mb-6 max-w-xs">
+        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
+          {label}
+        </label>
+        <div className="relative">
+          <select
+            value={selectedBank}
+            onChange={e => setSelectedBank(e.target.value)}
+            className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 pr-10 cursor-pointer"
+          >
+            <option value="">{placeholder}</option>
+            {groups.map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+          <ChevronDown size={15} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
+        </div>
+      </div>
+
+      {/* Cards for selected group */}
+      {selectedBank && cardsForGroup.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-400 mb-3">{subLabel}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {cardsForGroup.map(card => (
+              <CardRow key={card.id} card={card}
+                selected={selectedIds.includes(card.id)} onToggle={() => onToggle(card.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!selectedBank && <p className="text-sm text-gray-400">{emptyText}</p>}
+
+      {/* Selected chips summary */}
+      {selectedOfType.length > 0 && (
+        <div className="mt-6 pt-5 border-t border-gray-100">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Selected</p>
+          <div className="flex flex-wrap gap-2">
+            {selectedOfType
+              .map(id => CARDS.find(c => c.id === id))
+              .filter(Boolean)
+              .map(card => card && (
+                <div key={card.id}
+                  className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-full pl-2 pr-3 py-1">
+                  <div className="w-6 h-4 rounded text-[8px] font-bold text-white flex items-center justify-center"
+                    style={{ backgroundColor: card.color }}>
+                    {card.shortName}
+                  </div>
+                  <span className="text-xs font-medium text-blue-800">{card.name}</span>
+                  <button onClick={() => onToggle(card.id)} className="text-blue-400 hover:text-blue-600 ml-0.5">
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TABS: { type: CardType; label: string }[] = [
   { type: 'credit', label: 'Credit cards' },
   { type: 'debit',  label: 'Debit cards' },
@@ -150,100 +235,23 @@ export function CardSelector({ selectedIds, onToggle }: Props) {
         ))}
       </div>
 
-      {/* ── Credit: bank dropdown then cards ── */}
-      {activeType === 'credit' && (
-        <div>
-          {/* Bank dropdown */}
-          <div className="relative mb-6 max-w-xs">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-              Select your bank
-            </label>
-            <div className="relative">
-              <select
-                value={selectedBank}
-                onChange={e => setSelectedBank(e.target.value)}
-                className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 pr-10 cursor-pointer"
-              >
-                <option value="">Choose a bank…</option>
-                {banks.map(bank => (
-                  <option key={bank} value={bank}>{bank}</option>
-                ))}
-              </select>
-              <ChevronDown size={15} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Cards for selected bank */}
-          {selectedBank && cardsForBank.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-400 mb-3">
-                Select all {selectedBank} cards you hold
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {cardsForBank.map(card => (
-                  <CardRow
-                    key={card.id}
-                    card={card}
-                    selected={selectedIds.includes(card.id)}
-                    onToggle={() => onToggle(card.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!selectedBank && (
-            <p className="text-sm text-gray-400">Choose a bank above to see its cards.</p>
-          )}
-
-          {/* Summary of selected cards across all banks */}
-          {selectedIds.filter(id => CARDS.find(c => c.id === id && c.type === 'credit')).length > 0 && (
-            <div className="mt-6 pt-5 border-t border-gray-100">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-                Selected cards
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {selectedIds
-                  .map(id => CARDS.find(c => c.id === id && c.type === 'credit'))
-                  .filter(Boolean)
-                  .map(card => card && (
-                    <div key={card.id}
-                      className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-full pl-2 pr-3 py-1">
-                      <div className="w-6 h-4 rounded text-[8px] font-bold text-white flex items-center justify-center"
-                        style={{ backgroundColor: card.color }}>
-                        {card.shortName}
-                      </div>
-                      <span className="text-xs font-medium text-blue-800">{card.name}</span>
-                      <button onClick={() => onToggle(card.id)} className="text-blue-400 hover:text-blue-600 ml-0.5">
-                        <X size={11} />
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Debit: flat grid ── */}
-      {activeType === 'debit' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {debitCards.map(card => (
-            <CardRow key={card.id} card={card}
-              selected={selectedIds.includes(card.id)} onToggle={() => onToggle(card.id)} />
-          ))}
-        </div>
-      )}
-
-      {/* ── Wallets: flat grid ── */}
-      {activeType === 'wallet' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {wallets.map(card => (
-            <CardRow key={card.id} card={card}
-              selected={selectedIds.includes(card.id)} onToggle={() => onToggle(card.id)} />
-          ))}
-        </div>
-      )}
+      {/* ── Dropdown → cards (same pattern for all three tabs) ── */}
+      <DropdownSection
+        type={activeType}
+        cardsByGroup={
+          activeType === 'credit' ? creditByBank :
+          activeType === 'debit'  ? groupByBank(debitCards) :
+          groupByBank(wallets)
+        }
+        selectedIds={selectedIds}
+        onToggle={onToggle}
+        selectedBank={selectedBank}
+        setSelectedBank={setSelectedBank}
+        label={activeType === 'wallet' ? 'Select provider' : 'Select your bank'}
+        placeholder={activeType === 'wallet' ? 'Choose a provider…' : 'Choose a bank…'}
+        emptyText={activeType === 'wallet' ? 'Choose a provider above to see wallets.' : 'Choose a bank above to see its cards.'}
+        subLabel={activeType === 'wallet' ? 'Select your wallets' : `Select all ${selectedBank} cards you hold`}
+      />
     </div>
   );
 }
