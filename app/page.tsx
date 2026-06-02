@@ -8,6 +8,7 @@ import { useSearchHistory } from '@/lib/useSearchHistory';
 import { useProfile } from '@/lib/useProfile';
 import { useAuth } from '@/lib/AuthContext';
 import { UserButton } from '@/components/Nav';
+import { Footer } from '@/components/Footer';
 
 const playfair = Playfair_Display({ subsets: ['latin'], style: ['normal', 'italic'] });
 
@@ -119,6 +120,7 @@ export default function HomePage() {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

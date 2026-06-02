@@ -87,6 +87,15 @@ function RecoContent() {
       <DesktopNav back={`/results?q=${encodeURIComponent(query)}`} backLabel="Back to results" />
 
       <main className="flex-1 px-8 md:px-14 py-12">
+        {/* Accuracy banner */}
+        <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-8">
+          <AlertCircle size={15} className="text-amber-500 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-amber-800 leading-relaxed">
+            <strong>Always verify at checkout.</strong> Prices and bank offers update frequently.
+            The effective price shown is an estimate — confirm the final amount before paying.
+          </p>
+        </div>
+
         {/* Heading */}
         <p className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase mb-3">Best deal found</p>
         <h1 className={`${playfair.className} text-3xl md:text-4xl font-bold text-gray-900 mb-10`}>
