@@ -17,6 +17,14 @@ function fmt(n: number) {
 
 const PLATFORM_ORDER: Platform[] = ['amazon', 'flipkart', 'croma', 'vijay_sales', 'reliance_digital'];
 
+function buyUrl(platform: string, query: string) {
+  const domain =
+    platform === 'reliance_digital' ? 'reliancedigital.in' :
+    platform === 'vijay_sales' ? 'vijaysales.com' :
+    `${platform}.in`;
+  return `https://www.${domain}/s?k=${encodeURIComponent(query)}`;
+}
+
 function ResultsContent() {
   const params = useSearchParams();
   const router = useRouter();
@@ -92,13 +100,16 @@ function ResultsContent() {
             const isLowest = p?.available && p.price === lowestPrice && lowestPrice > 0;
 
             return (
-              <div
+              <a
                 key={platform}
-                className={`rounded-2xl border p-5 flex flex-col gap-3 transition-all ${
+                href={p?.available ? buyUrl(platform, query) : '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`rounded-2xl border p-5 flex flex-col gap-3 transition-all cursor-pointer ${
                   isLowest
-                    ? 'border-blue-200 bg-blue-50 ring-2 ring-blue-200'
-                    : 'border-gray-100 bg-white hover:border-gray-200'
-                }`}
+                    ? 'border-blue-200 bg-blue-50 ring-2 ring-blue-200 hover:bg-blue-100'
+                    : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
+                } ${!p?.available ? 'pointer-events-none opacity-50' : ''}`}
               >
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: info.color }} />
@@ -123,7 +134,7 @@ function ResultsContent() {
                 ) : (
                   <div className="text-sm text-gray-300 italic mt-1">Not listed</div>
                 )}
-              </div>
+              </a>
             );
           })}
         </div>
