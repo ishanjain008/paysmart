@@ -85,19 +85,21 @@ export async function searchAmazonProduct(query: string): Promise<AmazonProduct 
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`[searchAmazonProduct] API error: ${response.status}`, error.substring(0, 200));
+      console.error(`[searchAmazonProduct] API error: ${response.status}`, error.substring(0, 300));
       return null;
     }
 
     const data = await response.json();
-    console.log('[searchAmazonProduct] API response:', JSON.stringify(data).substring(0, 500));
+    console.log('[searchAmazonProduct] API response keys:', Object.keys(data).join(','));
+    console.log('[searchAmazonProduct] Full response:', JSON.stringify(data).substring(0, 1000));
     const item = data.SearchResult?.Items?.[0];
 
     if (!item?.ASIN) {
       console.warn('[searchAmazonProduct] No products found', {
         hasSearchResult: !!data.SearchResult,
         itemCount: data.SearchResult?.Items?.length,
-        dataKeys: Object.keys(data).join(',')
+        dataKeys: Object.keys(data).join(','),
+        responseLength: JSON.stringify(data).length
       });
       return null;
     }
