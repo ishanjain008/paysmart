@@ -51,14 +51,18 @@ function buildAmazonLink(url: string | undefined): string | undefined {
           continue;
         }
         const associateId = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_ID;
+        console.log('[buildAmazonLink] Extracted ASIN:', identifier, 'Associate ID available:', !!associateId);
         if (associateId) {
-          return `https://www.amazon.in/dp/${identifier}?tag=${associateId}`;
+          const link = `https://www.amazon.in/dp/${identifier}?tag=${associateId}`;
+          console.log('[buildAmazonLink] Built link:', link.substring(0, 80));
+          return link;
         }
       }
     }
   } catch (e) {
     console.error('[buildAmazonLink] Error:', e);
   }
+  console.log('[buildAmazonLink] No ASIN found or associate ID missing');
   return undefined;
 }
 
@@ -110,6 +114,39 @@ async function fetchLivePrices(
     }
     return { prices, productImage };
   } catch { return { prices: {}, productImage: null }; }
+}
+
+// Fetch Amazon product link via organic search
+async function fetchAmazonLink(query: string): Promise<string | undefined> {
+  if (!process.env.SERPER_KEY) return undefined;
+  try {
+    const searchQuery = `${query} site:amazon.in`;
+    console.log('[fetchAmazonLink] Searching for:', searchQuery);
+    const res = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: serperHeaders(),
+      body: JSON.stringify({ q: searchQuery, gl: 'in', hl: 'en', num: 3 }),
+      next: { revalidate: 10800 },
+    });
+    if (!res.ok) {
+      console.error('[fetchAmazonLink] API error:', res.status);
+      return undefined;
+    }
+    const data = await res.json();
+    console.log('[fetchAmazonLink] Organic results count:', data.organic?.length ?? 0);
+    // Find the first result that's actually a product page (contains /dp/)
+    for (const r of (data.organic ?? [])) {
+      console.log('[fetchAmazonLink] Checking result:', r.link?.substring(0, 80));
+      if (r.link && r.link.includes('/dp/')) {
+        const directLink = buildAmazonLink(r.link);
+        console.log('[fetchAmazonLink] Found direct link:', directLink?.substring(0, 80));
+        if (directLink) return directLink;
+      }
+    }
+  } catch (e) {
+    console.error('[fetchAmazonLink]', e);
+  }
+  return undefined;
 }
 
 // Organic site: search — for stores that block Google Shopping (Flipkart, Vijay Sales)
@@ -199,8 +236,16 @@ export async function GET(request: NextRequest) {
   if (flipkartPrice) live['flipkart']    = { price: flipkartPrice };
   if (vijayPrice)    live['vijay_sales'] = { price: vijayPrice };
 
-  // Note: Amazon links are now extracted directly from Serper results
-  // and converted to direct product links via buildAmazonLink()
+  // Fetch direct Amazon link if we have an Amazon result
+  if (live['amazon']) {
+    console.log('[prices/route] Fetching direct Amazon link for:', q);
+    const amazonLink = await fetchAmazonLink(q);
+    console.log('[prices/route] Amazon link result:', amazonLink ? 'found' : 'not found');
+    if (amazonLink) {
+      console.log('[prices/route] Updated Amazon link to:', amazonLink.substring(0, 80));
+      live['amazon'].link = amazonLink;
+    }
+  }
 
   const prices: PlatformPrice[] = PLATFORMS.map((platform) => {
     const liveData = live[platform];
