@@ -2,31 +2,24 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { Playfair_Display } from 'next/font/google';
 import { useSearchHistory } from '@/lib/useSearchHistory';
 import { useProfile } from '@/lib/useProfile';
 import { useAuth } from '@/lib/AuthContext';
 import { UserButton } from '@/components/Nav';
 import { Footer } from '@/components/Footer';
+import { SearchWithAutocomplete } from '@/components/SearchWithAutocomplete';
 
 const playfair = Playfair_Display({ subsets: ['latin'], style: ['normal', 'italic'] });
 
 const SUGGESTIONS = ['portable speaker', 'inverter AC', 'coffee maker', 'iPhone 16', 'Samsung S25', 'AirPods Pro'];
 
 export default function HomePage() {
-  const [query, setQuery] = useState('');
   const router = useRouter();
   const { history, push } = useSearchHistory();
   const { profile, loaded } = useProfile();
   const { user } = useAuth();
-
-  const handleSearch = (q: string) => {
-    const term = q.trim();
-    if (!term) return;
-    push(term);
-    router.push(`/results?q=${encodeURIComponent(term)}`);
-  };
 
   const cardCount = profile.cardIds.length;
 
@@ -78,23 +71,9 @@ export default function HomePage() {
           price <em className="text-gray-500">after</em> your card&apos;s offer.
         </p>
 
-        {/* ── Search bar ── */}
-        <div className="flex items-center bg-gray-100 rounded-2xl p-2 mb-5 max-w-2xl">
-          <input
-            type="text"
-            placeholder="I want to buy a Bluetooth speaker..."
-            className="flex-1 bg-transparent text-gray-800 placeholder-gray-400 text-base px-4 py-3 outline-none"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch(query)}
-            autoFocus
-          />
-          <button
-            onClick={() => handleSearch(query)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-5 py-3 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0"
-          >
-            Find it <ArrowRight size={15} />
-          </button>
+        {/* ── Search bar with auto-complete ── */}
+        <div className="mb-5 max-w-2xl">
+          <SearchWithAutocomplete />
         </div>
 
         {/* ── Suggestion chips ── */}
@@ -103,7 +82,7 @@ export default function HomePage() {
           {(history.length > 0 ? history.slice(0, 5) : SUGGESTIONS).map((s) => (
             <button
               key={s}
-              onClick={() => handleSearch(s)}
+              onClick={() => { push(s); router.push(`/variants?q=${encodeURIComponent(s)}`); }}
               className="text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full px-4 py-1.5 transition-colors"
             >
               {s}

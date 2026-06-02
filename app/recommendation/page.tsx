@@ -269,7 +269,7 @@ function RecoContent() {
 
 export default function RecommendationPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div />}>
       <RecoContent />
     </Suspense>
   );

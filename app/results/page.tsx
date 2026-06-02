@@ -155,7 +155,7 @@ function ResultsContent() {
 
 export default function ResultsPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div />}>
       <ResultsContent />
     </Suspense>
   );
