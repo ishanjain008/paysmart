@@ -25,7 +25,18 @@ function buyUrl(platform: string, query: string) {
     platform === 'reliance_digital' ? 'reliancedigital.in' :
     platform === 'vijay_sales' ? 'vijaysales.com' :
     `${platform}.in`;
-  return `https://www.${domain}/s?k=${encodeURIComponent(query)}`;
+
+  let url = `https://www.${domain}/s?k=${encodeURIComponent(query)}`;
+
+  // Add affiliate tag for Amazon links
+  if (platform === 'amazon') {
+    const affiliateTag = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_ID;
+    if (affiliateTag) {
+      url += `&tag=${affiliateTag}`;
+    }
+  }
+
+  return url;
 }
 
 function getProductLink(p: PlatformPrice, fallbackQuery: string): string {
