@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 
 export const maxDuration = 60;
@@ -82,12 +82,7 @@ If no clear offers are found, return []. Only include offers you are confident a
   try { return JSON.parse(match[0]); } catch { return []; }
 }
 
-export async function POST(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function POST(_request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 });
   }
