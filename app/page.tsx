@@ -106,9 +106,10 @@ export default function HomePage() {
             <div className="hidden lg:block flex-shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://images.unsplash.com/photo-1556742208-999db6be5a1f?w=500&h=600&fit=crop&q=80"
+                src="https://images.unsplash.com/photo-1579621970563-430f63602d4a?w=400&h=500&fit=crop&q=80"
                 alt="Credit cards and shopping"
                 className="w-64 h-80 object-cover rounded-3xl shadow-2xl"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             </div>
           </div>
