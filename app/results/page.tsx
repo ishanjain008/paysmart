@@ -28,9 +28,9 @@ function buyUrl(platform: string, query: string) {
   return `https://www.${domain}/s?k=${encodeURIComponent(query)}`;
 }
 
-function getProductLink(p: PlatformPrice): string {
+function getProductLink(p: PlatformPrice, fallbackQuery: string): string {
   // Use direct platform search with product title (more reliable than Serper's Google Shopping redirect)
-  const searchQuery = p.title ? p.title.split(' ').slice(0, 4).join(' ') : query;
+  const searchQuery = p.title ? p.title.split(' ').slice(0, 4).join(' ') : fallbackQuery;
   return buyUrl(p.platform, searchQuery);
 }
 
@@ -133,7 +133,7 @@ function ResultsContent() {
             return (
               <a
                 key={platform}
-                href={p?.available ? getProductLink(p) : '#'}
+                href={p?.available ? getProductLink(p, query) : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`rounded-2xl border p-4 flex flex-col gap-3 transition-all cursor-pointer ${
