@@ -10,15 +10,15 @@ interface AmazonProduct {
   url: string;
 }
 
-function hmacSha256(data: string, key: string): Buffer {
+function hmacSha256(data: string, key: string | Buffer): Buffer {
   return crypto.createHmac('sha256', key).update(data).digest();
 }
 
 function getSignatureKey(key: string, dateStamp: string, regionName: string, serviceName: string): Buffer {
   const kDate = hmacSha256(dateStamp, `AWS4${key}`);
-  const kRegion = hmacSha256(regionName, kDate.toString('binary'));
-  const kService = hmacSha256(serviceName, kRegion.toString('binary'));
-  const kSigning = hmacSha256('aws4_request', kService.toString('binary'));
+  const kRegion = hmacSha256(regionName, kDate);
+  const kService = hmacSha256(serviceName, kRegion);
+  const kSigning = hmacSha256('aws4_request', kService);
   return kSigning;
 }
 
