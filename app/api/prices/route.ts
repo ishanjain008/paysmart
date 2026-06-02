@@ -85,7 +85,7 @@ function buildAmazonLink(url: string | undefined): string | undefined {
   return undefined;
 }
 
-// Fetch Amazon product link and price via organic search
+// Fetch Amazon product link and price
 async function fetchAmazonLinkAndPrice(query: string): Promise<{ link?: string; price?: number }> {
   const serperKey = process.env.SERPER_KEY;
   if (!serperKey) return {};
@@ -101,14 +101,8 @@ async function fetchAmazonLinkAndPrice(query: string): Promise<{ link?: string; 
     for (const r of (data.organic ?? [])) {
       if (r.link && r.link.includes('/dp/')) {
         const link = buildAmazonLink(r.link);
-        // Try to extract price from snippet
-        let price: number | undefined;
-        if (r.snippet) {
-          const priceMatch = r.snippet.match(/₹[\s,]*([0-9,]+)/);
-          if (priceMatch) {
-            price = parseInt(priceMatch[1].replace(/,/g, ''), 10);
-          }
-        }
+        // Fetch the actual product page to get real price
+        const price = await fetchAmazonPrice(r.link);
         return { link, price };
       }
     }
@@ -118,6 +112,44 @@ async function fetchAmazonLinkAndPrice(query: string): Promise<{ link?: string; 
   return {};
 }
 
+// Fetch actual price from Amazon product page
+async function fetchAmazonPrice(productUrl: string): Promise<number | undefined> {
+  try {
+    const res = await fetch(productUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!res.ok) return undefined;
+    const html = await res.text();
+
+    // Look for price patterns in HTML
+    // Amazon uses various price selectors, try multiple patterns
+    const patterns = [
+      /₹\s*([0-9,]+)(?:\.\d+)?(?=<|&|[\s"])/g,  // General rupee price pattern
+      /"price":"([0-9.]+)"/g,  // JSON price format
+    ];
+
+    const prices: number[] = [];
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(html)) !== null) {
+        const priceStr = match[1].replace(/,/g, '');
+        const price = parseFloat(priceStr);
+        if (price > 1000 && price < 10000000) { // Reasonable product price range
+          prices.push(Math.round(price));
+        }
+      }
+    }
+
+    // Return the first reasonable price found
+    if (prices.length > 0) {
+      return prices[0];
+    }
+  } catch (e) {
+    // Page fetch failure
+  }
+  return undefined;
+}
+
 // ── Route handler ─────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q') ?? '';
@@ -125,20 +157,19 @@ export async function GET(request: NextRequest) {
 
   console.log('[prices/route] Query:', q);
 
-  // Get mock prices
   const mockPrices = mockFallback(q);
   const live: Partial<Record<Platform, { price: number; title?: string; link?: string }>> = {};
 
   // For Amazon, fetch real price and affiliate link
   const amazonData = await fetchAmazonLinkAndPrice(q);
-  if (amazonData.link || mockPrices['amazon']) {
+  if (amazonData.link || amazonData.price) {
     live['amazon'] = {
-      price: amazonData.price ?? mockPrices['amazon'] ?? 0,
+      price: amazonData.price ?? 0,
       ...(amazonData.link && { link: amazonData.link }),
     };
   }
 
-  // For other platforms, just use mock prices
+  // For other platforms, use mock prices (no links for now)
   for (const platform of PLATFORMS) {
     if (platform !== 'amazon' && mockPrices[platform]) {
       live[platform] = { price: mockPrices[platform] };
