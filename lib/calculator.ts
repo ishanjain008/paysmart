@@ -5,6 +5,9 @@ export interface PlatformPrice {
   platform: Platform;
   price: number;
   available: boolean;
+  title?: string;
+  image?: string;
+  link?: string;
 }
 
 export interface BreakdownLine {
