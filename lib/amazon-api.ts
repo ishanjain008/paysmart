@@ -14,8 +14,13 @@ interface AmazonProduct {
  * Returns direct product link with affiliate tag
  */
 export async function searchAmazonProduct(query: string): Promise<AmazonProduct | null> {
+  console.log('[searchAmazonProduct] Starting with query:', query);
+  console.log('[searchAmazonProduct] AWS_ACCESS_KEY exists:', !!AWS_ACCESS_KEY);
+  console.log('[searchAmazonProduct] AWS_SECRET_KEY exists:', !!AWS_SECRET_KEY);
+  console.log('[searchAmazonProduct] AMAZON_ASSOCIATE_ID:', AMAZON_ASSOCIATE_ID);
+
   if (!AWS_ACCESS_KEY || !AWS_SECRET_KEY || !AMAZON_ASSOCIATE_ID) {
-    console.warn('Amazon API credentials not configured');
+    console.warn('[searchAmazonProduct] Credentials not configured');
     return null;
   }
 
@@ -27,20 +32,29 @@ export async function searchAmazonProduct(query: string): Promise<AmazonProduct 
         ? `https://${process.env.VERCEL_URL}`
         : 'http://localhost:3000';
 
-    const response = await fetch(`${baseUrl}/api/amazon-search`, {
+    console.log('[searchAmazonProduct] Base URL:', baseUrl);
+    const fetchUrl = `${baseUrl}/api/amazon-search`;
+    console.log('[searchAmazonProduct] Fetching from:', fetchUrl);
+
+    const response = await fetch(fetchUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
     });
 
+    console.log('[searchAmazonProduct] Response status:', response.status);
+
     if (!response.ok) {
-      console.error(`Amazon search error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[searchAmazonProduct] Error: ${response.status}`, errorText);
       return null;
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('[searchAmazonProduct] Success:', result);
+    return result;
   } catch (error) {
-    console.error('Error searching Amazon:', error);
+    console.error('[searchAmazonProduct] Exception:', error);
     return null;
   }
 }

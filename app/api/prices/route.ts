@@ -149,6 +149,8 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q') ?? '';
   if (!q) return Response.json([]);
 
+  console.log('[prices/route] Starting with query:', q);
+
   const [{ prices: live, productImage }, flipkartPrice, vijayPrice, mock, amazonProduct] = await Promise.all([
     fetchLivePrices(q),
     fetchFlipkartPrice(q),
@@ -157,11 +159,14 @@ export async function GET(request: NextRequest) {
     searchAmazonProduct(q),
   ]);
 
+  console.log('[prices/route] Amazon product result:', amazonProduct);
+
   if (flipkartPrice) live['flipkart']    = { price: flipkartPrice };
   if (vijayPrice)    live['vijay_sales'] = { price: vijayPrice };
 
   // If Amazon search successful, use direct product link
   if (amazonProduct) {
+    console.log('[prices/route] Using direct Amazon link');
     live['amazon'] = {
       price: amazonProduct.price || live['amazon']?.price || 0,
       title: amazonProduct.title,
