@@ -10,7 +10,6 @@ interface PlatformPrice {
 
 const PLATFORMS: Platform[] = ['amazon', 'flipkart', 'croma', 'vijay_sales', 'reliance_digital', 'tata_cliq'];
 
-// Map SearchAPI "seller" field to our platform IDs
 const SOURCE_MAP: { platform: Platform; patterns: string[] }[] = [
   { platform: 'amazon',           patterns: ['amazon'] },
   { platform: 'flipkart',         patterns: ['flipkart'] },
@@ -28,63 +27,32 @@ function matchPlatform(source: string): Platform | null {
   return null;
 }
 
-// ── Site-specific price via Google organic search ─────────────────
-// Used for stores that block Google Shopping (Flipkart, Vijay Sales)
-async function fetchSitePrice(query: string, site: string): Promise<number | null> {
-  const apiKey = process.env.SERPAPI_KEY;
-  if (!apiKey) return null;
+// ── Serper.dev helpers ────────────────────────────────────────────
 
-  const url =
-    `https://www.searchapi.io/api/v1/search` +
-    `?engine=google` +
-    `&q=${encodeURIComponent(query + ' site:' + site)}` +
-    `&gl=in&hl=en` +
-    `&api_key=${apiKey}`;
-
-  try {
-    const res = await fetch(url, { next: { revalidate: 10800 } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    for (const result of (data.organic_results ?? []).slice(0, 5)) {
-      const text = (result.snippet ?? '') + ' ' + (result.title ?? '');
-      const match = text.match(/₹\s*([\d,]+)/);
-      if (match) return parseInt(match[1].replace(/,/g, ''), 10);
-    }
-    return null;
-  } catch { return null; }
+function serperHeaders() {
+  return { 'X-API-KEY': process.env.SERPER_KEY ?? '', 'Content-Type': 'application/json' };
 }
 
-const fetchFlipkartPrice  = (q: string) => fetchSitePrice(q, 'flipkart.com');
-const fetchVijayPrice     = (q: string) => fetchSitePrice(q, 'vijaysales.com');
-
-// ── Live prices via SearchAPI Google Shopping ─────────────────────
+// Google Shopping — covers Amazon, Reliance Digital, Tata Cliq, Croma
 async function fetchLivePrices(query: string): Promise<Partial<Record<Platform, number>>> {
-  const apiKey = process.env.SERPAPI_KEY;
-  if (!apiKey) return {};
-
-  const url =
-    `https://www.searchapi.io/api/v1/search` +
-    `?engine=google_shopping` +
-    `&q=${encodeURIComponent(query)}` +
-    `&gl=in` +
-    `&hl=en` +
-    `&google_domain=google.co.in` +
-    `&api_key=${apiKey}`;
-
+  if (!process.env.SERPER_KEY) return {};
   try {
-    // Cache each query for 3 hours to avoid burning API credits on repeat searches
-    const res = await fetch(url, { next: { revalidate: 10800 } });
+    const res = await fetch('https://google.serper.dev/shopping', {
+      method: 'POST',
+      headers: serperHeaders(),
+      body: JSON.stringify({ q: query, gl: 'in', hl: 'en' }),
+      next: { revalidate: 10800 },
+    });
     if (!res.ok) return {};
 
     const data = await res.json();
-    const results: { source: string; price: number }[] = (data.shopping_results ?? [])
-      .filter((r: { extracted_price?: number }) => r.extracted_price)
-      .map((r: { seller?: string; source?: string; extracted_price: number }) => ({
-        source: r.seller ?? r.source ?? '',
-        price: r.extracted_price,
-      }));
+    const results: { source: string; price: number }[] = (data.shopping ?? [])
+      .map((r: { source?: string; price?: string }) => ({
+        source: r.source ?? '',
+        price: parseInt((r.price ?? '').replace(/[₹,\s]/g, ''), 10),
+      }))
+      .filter((r: { price: number }) => !isNaN(r.price) && r.price > 0);
 
-    // Keep the lowest price found per platform
     const prices: Partial<Record<Platform, number>> = {};
     for (const { source, price } of results) {
       const platform = matchPlatform(source);
@@ -93,12 +61,34 @@ async function fetchLivePrices(query: string): Promise<Partial<Record<Platform, 
       }
     }
     return prices;
-  } catch {
-    return {};
-  }
+  } catch { return {}; }
 }
 
-// ── Mock fallback (used when SerpAPI has no result for a platform) ─
+// Organic site: search — for stores that block Google Shopping (Flipkart, Vijay Sales)
+async function fetchSitePrice(query: string, site: string): Promise<number | null> {
+  if (!process.env.SERPER_KEY) return null;
+  try {
+    const res = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: serperHeaders(),
+      body: JSON.stringify({ q: `${query} site:${site}`, gl: 'in', hl: 'en' }),
+      next: { revalidate: 10800 },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    for (const r of (data.organic ?? []).slice(0, 5)) {
+      const text = (r.snippet ?? '') + ' ' + (r.title ?? '');
+      const match = text.match(/₹\s*([\d,]+)/);
+      if (match) return parseInt(match[1].replace(/,/g, ''), 10);
+    }
+    return null;
+  } catch { return null; }
+}
+
+const fetchFlipkartPrice = (q: string) => fetchSitePrice(q, 'flipkart.com');
+const fetchVijayPrice    = (q: string) => fetchSitePrice(q, 'vijaysales.com');
+
+// ── Mock fallback ─────────────────────────────────────────────────
 const MOCK_PRODUCTS: Record<string, Partial<Record<Platform, number>>> = {
   'samsung galaxy s25': { amazon: 74999, flipkart: 76490, croma: 77000, vijay_sales: 75499, reliance_digital: 76999, tata_cliq: 75999 },
   'samsung galaxy s25 ultra': { amazon: 129999, flipkart: 131490, croma: 132000, vijay_sales: 130999, reliance_digital: 131000, tata_cliq: 130499 },
@@ -160,7 +150,6 @@ export async function GET(request: NextRequest) {
   if (vijayPrice)    live['vijay_sales'] = vijayPrice;
 
   const result: PlatformPrice[] = PLATFORMS.map((platform) => {
-    // Prefer live price; fall back to mock with slight variance
     const livePrice = live[platform];
     if (livePrice) return { platform, price: livePrice, available: true };
 
