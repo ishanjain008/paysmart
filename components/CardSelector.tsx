@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { ChevronDown, Check, Loader2 } from 'lucide-react';
+import { Check, ChevronDown, Loader2, X } from 'lucide-react';
 import { CARDS, Card, CardType } from '@/data/cards';
 
 interface Props {
@@ -8,43 +8,6 @@ interface Props {
   onToggle: (id: string) => void;
 }
 
-// Map keywords in binlist bank names → our bank display names
-const BANK_KEYWORDS: [string, string][] = [
-  ['HDFC',               'HDFC Bank'],
-  ['AXIS',               'Axis Bank'],
-  ['ICICI',              'ICICI Bank'],
-  ['STATE BANK',         'SBI Card'],
-  ['SBI',                'SBI Card'],
-  ['KOTAK',              'Kotak Bank'],
-  ['IDFC',               'IDFC First'],
-  ['AMERICAN EXPRESS',   'American Express'],
-  ['AMEX',               'American Express'],
-  ['YES BANK',           'YES Bank'],
-  ['AU SMALL',           'AU Small Finance'],
-  ['STANDARD CHARTERED', 'Standard Chartered'],
-  ['ONE97',              'OneCard'],
-];
-
-function matchBankFromBin(rawName: string): string | null {
-  const upper = rawName.toUpperCase();
-  for (const [kw, name] of BANK_KEYWORDS) {
-    if (upper.includes(kw)) return name;
-  }
-  return null;
-}
-
-async function fetchBin(bin: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://lookup.binlist.net/${bin}`, {
-      headers: { 'Accept-Version': '3' },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return matchBankFromBin(data?.bank?.name ?? '');
-  } catch { return null; }
-}
-
-// Group credit cards by bank, preserving order
 function groupByBank(cards: Card[]): Map<string, Card[]> {
   const map = new Map<string, Card[]>();
   for (const card of cards) {
@@ -59,7 +22,7 @@ function CardRow({ card, selected, onToggle }: { card: Card; selected: boolean; 
   return (
     <button
       onClick={onToggle}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+      className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all w-full ${
         selected ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-gray-200 bg-white'
       }`}
     >
@@ -70,179 +33,214 @@ function CardRow({ card, selected, onToggle }: { card: Card; selected: boolean; 
         {card.shortName}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-semibold text-gray-800 truncate">{card.name}</div>
-        <div className="text-[10px] text-gray-400">{card.bank}</div>
+        <div className="text-sm font-semibold text-gray-800 truncate">{card.name}</div>
+        <div className="text-xs text-gray-400">{card.bank}</div>
       </div>
       {selected && <Check size={14} className="text-blue-600 flex-shrink-0" />}
     </button>
   );
 }
 
-function BankAccordion({
-  bank, cards, selectedIds, onToggle, open, onToggleOpen,
-}: {
-  bank: string; cards: Card[]; selectedIds: string[];
-  onToggle: (id: string) => void; open: boolean; onToggleOpen: () => void;
-}) {
-  const selectedCount = cards.filter(c => selectedIds.includes(c.id)).length;
-
-  return (
-    <div className={`border rounded-2xl overflow-hidden transition-colors ${open ? 'border-blue-200' : 'border-gray-100'}`}>
-      <button
-        onClick={onToggleOpen}
-        className={`w-full flex items-center justify-between px-5 py-4 transition-colors ${open ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-      >
-        <div className="flex items-center gap-3">
-          <span className={`font-semibold text-sm ${open ? 'text-blue-700' : 'text-gray-800'}`}>{bank}</span>
-          {selectedCount > 0 && (
-            <span className="text-[11px] bg-blue-600 text-white font-semibold px-2 py-0.5 rounded-full">
-              {selectedCount}
-            </span>
-          )}
-        </div>
-        <ChevronDown
-          size={15}
-          className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180 text-blue-500' : ''}`}
-        />
-      </button>
-
-      {open && (
-        <div className="px-4 pb-4 pt-2 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {cards.map(card => (
-            <CardRow
-              key={card.id}
-              card={card}
-              selected={selectedIds.includes(card.id)}
-              onToggle={() => onToggle(card.id)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+const TABS: { type: CardType; label: string }[] = [
+  { type: 'credit', label: 'Credit cards' },
+  { type: 'debit',  label: 'Debit cards' },
+  { type: 'wallet', label: 'Wallets' },
+];
 
 export function CardSelector({ selectedIds, onToggle }: Props) {
-  const [binInput, setBinInput]     = useState('');
-  const [binLoading, setBinLoading] = useState(false);
-  const [binHint, setBinHint]       = useState('');
-  const [expandedBank, setExpandedBank] = useState<string | null>(null);
-  const [activeType, setActiveType] = useState<CardType>('credit');
-
-  const handleBinChange = async (raw: string) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 6);
-    setBinInput(digits);
-    setBinHint('');
-
-    if (digits.length === 6) {
-      setBinLoading(true);
-      const bank = await fetchBin(digits);
-      setBinLoading(false);
-      if (bank) {
-        setActiveType('credit');
-        setExpandedBank(bank);
-        setBinHint(`Found: ${bank} — select your card below`);
-      } else {
-        setBinHint('Card not found — browse your bank below');
-      }
-    }
-  };
+  const [activeType, setActiveType]   = useState<CardType>('credit');
+  const [selectedBank, setSelectedBank] = useState('');
+  const [binInput, setBinInput]       = useState('');
+  const [binLoading, setBinLoading]   = useState(false);
+  const [binMessage, setBinMessage]   = useState('');
+  const [binStatus, setBinStatus]     = useState<'idle' | 'found' | 'notfound'>('idle');
 
   const creditByBank = groupByBank(CARDS.filter(c => c.type === 'credit'));
   const debitCards   = CARDS.filter(c => c.type === 'debit');
   const wallets      = CARDS.filter(c => c.type === 'wallet');
+  const banks        = Array.from(creditByBank.keys());
 
-  const TABS: { type: CardType; label: string }[] = [
-    { type: 'credit', label: 'Credit cards' },
-    { type: 'debit',  label: 'Debit cards' },
-    { type: 'wallet', label: 'Wallets' },
-  ];
+  const cardsForBank = selectedBank ? (creditByBank.get(selectedBank) ?? []) : [];
+
+  const handleBinChange = async (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 6);
+    setBinInput(digits);
+    setBinMessage('');
+    setBinStatus('idle');
+
+    if (digits.length === 6) {
+      setBinLoading(true);
+      try {
+        const res = await fetch(`/api/bin?bin=${digits}`);
+        const data = await res.json();
+        if (data.cardId) {
+          // Direct card match — auto-select it
+          const card = CARDS.find(c => c.id === data.cardId);
+          if (card) {
+            setActiveType('credit');
+            setSelectedBank(card.bank);
+            if (!selectedIds.includes(data.cardId)) onToggle(data.cardId);
+            setBinMessage(`Found: ${card.name} · added to your wallet`);
+            setBinStatus('found');
+          }
+        } else if (data.bank) {
+          // Bank identified — switch to it
+          setActiveType('credit');
+          setSelectedBank(data.bank);
+          setBinMessage(`Found: ${data.bank} — select your card below`);
+          setBinStatus('found');
+        } else {
+          setBinMessage("Couldn't identify this card — select your bank from the dropdown below");
+          setBinStatus('notfound');
+        }
+      } catch {
+        setBinMessage('Lookup failed — select your bank below');
+        setBinStatus('notfound');
+      } finally {
+        setBinLoading(false);
+      }
+    }
+  };
 
   return (
-    <div>
-      {/* BIN finder */}
-      <div className="mb-8 p-5 bg-gray-50 rounded-2xl max-w-sm">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+    <div className="max-w-2xl">
+      {/* ── BIN finder ── */}
+      <div className="mb-8 p-5 bg-gray-50 rounded-2xl">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
           Know your card number?
         </p>
-        <div className="relative">
-          <input
-            type="text"
-            inputMode="numeric"
-            maxLength={7}
-            placeholder="Enter first 6 digits…"
-            value={binInput.replace(/^(\d{4})(\d)/, '$1 $2')}
-            onChange={e => handleBinChange(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 pr-10 tracking-widest"
-          />
-          {binLoading && (
-            <Loader2 size={15} className="absolute right-3 top-3 text-blue-500 animate-spin" />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-xs">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Enter first 6 digits"
+              value={binInput.replace(/^(\d{4})(\d{1,2})/, '$1 $2')}
+              onChange={e => handleBinChange(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 tracking-widest pr-9"
+            />
+            {binLoading && (
+              <Loader2 size={15} className="absolute right-3 top-3 text-blue-500 animate-spin" />
+            )}
+            {binInput && !binLoading && (
+              <button onClick={() => { setBinInput(''); setBinMessage(''); setBinStatus('idle'); }}
+                className="absolute right-3 top-3 text-gray-300 hover:text-gray-500">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {binMessage && (
+            <p className={`text-xs ${binStatus === 'found' ? 'text-green-600' : 'text-amber-600'}`}>
+              {binMessage}
+            </p>
           )}
         </div>
-        {binHint && (
-          <p className={`text-xs mt-1.5 ${binHint.startsWith('Found') ? 'text-green-600' : 'text-amber-600'}`}>
-            {binHint}
-          </p>
-        )}
-        <p className="text-[11px] text-gray-400 mt-1.5">We never store or transmit your card number.</p>
+        <p className="text-[11px] text-gray-400 mt-2">We never store or transmit your card number.</p>
       </div>
 
-      {/* Tab switcher */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-5">
+      {/* ── Tab switcher ── */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-6">
         {TABS.map(({ type, label }) => (
-          <button
-            key={type}
-            onClick={() => setActiveType(type)}
+          <button key={type} onClick={() => { setActiveType(type); setSelectedBank(''); }}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
               activeType === type ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
+            }`}>
             {label}
           </button>
         ))}
       </div>
 
-      {/* Credit: bank accordion */}
+      {/* ── Credit: bank dropdown then cards ── */}
       {activeType === 'credit' && (
-        <div className="space-y-2">
-          {Array.from(creditByBank.entries()).map(([bank, cards]) => (
-            <BankAccordion
-              key={bank}
-              bank={bank}
-              cards={cards}
-              selectedIds={selectedIds}
-              onToggle={onToggle}
-              open={expandedBank === bank}
-              onToggleOpen={() => setExpandedBank(expandedBank === bank ? null : bank)}
-            />
-          ))}
+        <div>
+          {/* Bank dropdown */}
+          <div className="relative mb-6 max-w-xs">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
+              Select your bank
+            </label>
+            <div className="relative">
+              <select
+                value={selectedBank}
+                onChange={e => setSelectedBank(e.target.value)}
+                className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 pr-10 cursor-pointer"
+              >
+                <option value="">Choose a bank…</option>
+                {banks.map(bank => (
+                  <option key={bank} value={bank}>{bank}</option>
+                ))}
+              </select>
+              <ChevronDown size={15} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Cards for selected bank */}
+          {selectedBank && cardsForBank.length > 0 && (
+            <div>
+              <p className="text-xs text-gray-400 mb-3">
+                Select all {selectedBank} cards you hold
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {cardsForBank.map(card => (
+                  <CardRow
+                    key={card.id}
+                    card={card}
+                    selected={selectedIds.includes(card.id)}
+                    onToggle={() => onToggle(card.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!selectedBank && (
+            <p className="text-sm text-gray-400">Choose a bank above to see its cards.</p>
+          )}
+
+          {/* Summary of selected cards across all banks */}
+          {selectedIds.filter(id => CARDS.find(c => c.id === id && c.type === 'credit')).length > 0 && (
+            <div className="mt-6 pt-5 border-t border-gray-100">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                Selected cards
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedIds
+                  .map(id => CARDS.find(c => c.id === id && c.type === 'credit'))
+                  .filter(Boolean)
+                  .map(card => card && (
+                    <div key={card.id}
+                      className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-full pl-2 pr-3 py-1">
+                      <div className="w-6 h-4 rounded text-[8px] font-bold text-white flex items-center justify-center"
+                        style={{ backgroundColor: card.color }}>
+                        {card.shortName}
+                      </div>
+                      <span className="text-xs font-medium text-blue-800">{card.name}</span>
+                      <button onClick={() => onToggle(card.id)} className="text-blue-400 hover:text-blue-600 ml-0.5">
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Debit: flat grid */}
+      {/* ── Debit: flat grid ── */}
       {activeType === 'debit' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {debitCards.map(card => (
-            <CardRow
-              key={card.id}
-              card={card}
-              selected={selectedIds.includes(card.id)}
-              onToggle={() => onToggle(card.id)}
-            />
+            <CardRow key={card.id} card={card}
+              selected={selectedIds.includes(card.id)} onToggle={() => onToggle(card.id)} />
           ))}
         </div>
       )}
 
-      {/* Wallets: flat grid */}
+      {/* ── Wallets: flat grid ── */}
       {activeType === 'wallet' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {wallets.map(card => (
-            <CardRow
-              key={card.id}
-              card={card}
-              selected={selectedIds.includes(card.id)}
-              onToggle={() => onToggle(card.id)}
-            />
+            <CardRow key={card.id} card={card}
+              selected={selectedIds.includes(card.id)} onToggle={() => onToggle(card.id)} />
           ))}
         </div>
       )}
