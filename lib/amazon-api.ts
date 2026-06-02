@@ -72,6 +72,10 @@ export async function searchAmazonProduct(query: string): Promise<AmazonProduct 
 
     const authorizationHeader = `AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
+    console.log('[searchAmazonProduct] Making API request to:', `https://${HOST}/paapi5/searchitems`);
+    console.log('[searchAmazonProduct] Authorization header:', authorizationHeader.substring(0, 80) + '...');
+    console.log('[searchAmazonProduct] Payload:', payloadStr);
+
     const response = await fetch(`https://${HOST}/paapi5/searchitems`, {
       method: 'POST',
       headers: {
@@ -83,9 +87,10 @@ export async function searchAmazonProduct(query: string): Promise<AmazonProduct 
       body: payloadStr,
     });
 
+    console.log('[searchAmazonProduct] Response status:', response.status);
     if (!response.ok) {
       const error = await response.text();
-      console.error(`[searchAmazonProduct] API error: ${response.status}`, error.substring(0, 300));
+      console.error(`[searchAmazonProduct] API error: ${response.status}`, error.substring(0, 500));
       return null;
     }
 
