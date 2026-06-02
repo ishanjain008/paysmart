@@ -1,7 +1,3 @@
-const AMAZON_ASSOCIATE_ID = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_ID || '';
-const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID || '';
-const AWS_SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY || '';
-
 interface AmazonProduct {
   asin: string;
   title: string;
@@ -14,6 +10,11 @@ interface AmazonProduct {
  * Returns direct product link with affiliate tag
  */
 export async function searchAmazonProduct(query: string): Promise<AmazonProduct | null> {
+  // Read environment variables at runtime, not module load time
+  const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID || '';
+  const AWS_SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY || '';
+  const AMAZON_ASSOCIATE_ID = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_ID || '';
+
   console.log('[searchAmazonProduct] Starting with query:', query);
   console.log('[searchAmazonProduct] AWS_ACCESS_KEY exists:', !!AWS_ACCESS_KEY);
   console.log('[searchAmazonProduct] AWS_SECRET_KEY exists:', !!AWS_SECRET_KEY);
