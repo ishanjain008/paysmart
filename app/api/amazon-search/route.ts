@@ -29,8 +29,11 @@ function getSignatureKey(key: string, dateStamp: string, regionName: string, ser
 export async function POST(request: NextRequest) {
   try {
     const { query } = await request.json();
+    console.log('[Amazon Search] Query:', query);
+    console.log('[Amazon Search] Credentials available:', !!AWS_ACCESS_KEY && !!AWS_SECRET_KEY && !!AMAZON_ASSOCIATE_ID);
 
     if (!AWS_ACCESS_KEY || !AWS_SECRET_KEY || !AMAZON_ASSOCIATE_ID) {
+      console.error('[Amazon Search] Missing credentials');
       return Response.json({ error: 'AWS credentials not configured' }, { status: 400 });
     }
 
@@ -78,9 +81,11 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`Amazon API error: ${response.status}`, error);
+      console.error(`[Amazon Search] API error: ${response.status}`, error);
       return Response.json({ error: `Amazon API error: ${response.status}` }, { status: response.status });
     }
+
+    console.log('[Amazon Search] API response OK');
 
     const data = await response.json();
     const item = data.SearchResult?.Items?.[0];
