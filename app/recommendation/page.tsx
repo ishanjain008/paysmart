@@ -37,9 +37,13 @@ function RecoContent() {
   const { profile, loaded } = useProfile();
   const [recos, setRecos] = useState<Recommendation[]>([]);
   const [noData, setNoData] = useState(false);
+  const [productImage, setProductImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loaded) return;
+    const img = sessionStorage.getItem('paysmart_product_image');
+    if (img) setProductImage(img);
+
     const raw = sessionStorage.getItem('paysmart_prices');
     if (!raw) { setNoData(true); return; }
 
@@ -97,10 +101,23 @@ function RecoContent() {
         </div>
 
         {/* Heading */}
-        <p className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase mb-3">Best deal found</p>
-        <h1 className={`${playfair.className} text-3xl md:text-4xl font-bold text-gray-900 mb-10`}>
-          {query}
-        </h1>
+        <div className="flex items-center gap-5 mb-10">
+          {productImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={productImage}
+              alt={query}
+              className="w-20 h-20 object-contain rounded-2xl bg-gray-50 border border-gray-100 flex-shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+          <div>
+            <p className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase mb-1">Best deal found</p>
+            <h1 className={`${playfair.className} text-3xl md:text-4xl font-bold text-gray-900`}>
+              {query}
+            </h1>
+          </div>
+        </div>
 
         {!best ? (
           <div className="py-16 text-center">

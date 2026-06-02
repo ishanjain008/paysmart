@@ -22,6 +22,7 @@ function ResultsContent() {
   const router = useRouter();
   const query = params.get('q') ?? '';
   const [prices, setPrices] = useState<PlatformPrice[]>([]);
+  const [productImage, setProductImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { push } = useSearchHistory();
 
@@ -30,7 +31,11 @@ function ResultsContent() {
     push(query);
     setLoading(true);
     fetchPrices(query)
-      .then((p) => { setPrices(p); setLoading(false); })
+      .then(({ prices: p, productImage: img }) => {
+        setPrices(p);
+        setProductImage(img);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -39,6 +44,7 @@ function ResultsContent() {
 
   const goToRecommendation = () => {
     sessionStorage.setItem('paysmart_prices', JSON.stringify(prices));
+    sessionStorage.setItem('paysmart_product_image', productImage ?? '');
     router.push(`/recommendation?q=${encodeURIComponent(query)}`);
   };
 
@@ -47,24 +53,39 @@ function ResultsContent() {
       <DesktopNav back="/" backLabel="New search" />
 
       <main className="flex-1 px-8 md:px-14 py-12">
-        {/* Query header */}
-        <div className="flex items-baseline gap-4 mb-2">
-          <h1 className={`${playfair.className} text-4xl md:text-5xl font-bold text-gray-900`}>
-            {query}
-          </h1>
-          <button
-            onClick={() => router.push('/')}
-            className="text-sm text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-1"
-          >
-            <RefreshCw size={12} /> Change
-          </button>
+        {/* Product header */}
+        <div className="flex items-center gap-6 mb-2">
+          {productImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={productImage}
+              alt={query}
+              className="w-20 h-20 object-contain rounded-2xl bg-gray-50 border border-gray-100 flex-shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : loading ? (
+            <div className="w-20 h-20 rounded-2xl bg-gray-100 animate-pulse flex-shrink-0" />
+          ) : null}
+          <div>
+            <div className="flex items-baseline gap-4">
+              <h1 className={`${playfair.className} text-4xl md:text-5xl font-bold text-gray-900`}>
+                {query}
+              </h1>
+              <button
+                onClick={() => router.push('/')}
+                className="text-sm text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-1"
+              >
+                <RefreshCw size={12} /> Change
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mt-1">
+              {loading ? 'Fetching live prices…' : `${available.length} stores · prices before your card benefits`}
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-gray-400 mb-10">
-          {loading ? 'Fetching live prices…' : `${available.length} stores · prices before your card benefits`}
-        </p>
 
         {/* Platform cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10 mt-10">
           {PLATFORM_ORDER.map((platform) => {
             const p = prices.find((x) => x.platform === platform);
             const info = PLATFORMS[platform];

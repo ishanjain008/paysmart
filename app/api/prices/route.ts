@@ -32,9 +32,11 @@ function serperHeaders() {
   return { 'X-API-KEY': process.env.SERPER_KEY ?? '', 'Content-Type': 'application/json' };
 }
 
-// Google Shopping — covers Amazon, Reliance Digital, Tata Cliq, Croma
-async function fetchLivePrices(query: string): Promise<Partial<Record<Platform, number>>> {
-  if (!process.env.SERPER_KEY) return {};
+// Google Shopping — covers Amazon, Reliance Digital, Croma
+async function fetchLivePrices(
+  query: string
+): Promise<{ prices: Partial<Record<Platform, number>>; productImage: string | null }> {
+  if (!process.env.SERPER_KEY) return { prices: {}, productImage: null };
   try {
     const res = await fetch('https://google.serper.dev/shopping', {
       method: 'POST',
@@ -42,25 +44,25 @@ async function fetchLivePrices(query: string): Promise<Partial<Record<Platform, 
       body: JSON.stringify({ q: query, gl: 'in', hl: 'en' }),
       next: { revalidate: 10800 },
     });
-    if (!res.ok) return {};
+    if (!res.ok) return { prices: {}, productImage: null };
 
     const data = await res.json();
-    const results: { source: string; price: number }[] = (data.shopping ?? [])
-      .map((r: { source?: string; price?: string }) => ({
-        source: r.source ?? '',
-        price: parseInt((r.price ?? '').replace(/[₹,\s]/g, ''), 10),
-      }))
-      .filter((r: { price: number }) => !isNaN(r.price) && r.price > 0);
+    const items: { source?: string; price?: string; thumbnail?: string }[] = data.shopping ?? [];
+
+    // Grab the first product image from any result
+    const productImage = items.find((r) => r.thumbnail)?.thumbnail ?? null;
 
     const prices: Partial<Record<Platform, number>> = {};
-    for (const { source, price } of results) {
-      const platform = matchPlatform(source);
+    for (const r of items) {
+      const price = parseInt((r.price ?? '').replace(/[₹,\s]/g, ''), 10);
+      if (isNaN(price) || price <= 0) continue;
+      const platform = matchPlatform(r.source ?? '');
       if (platform && (!prices[platform] || price < prices[platform]!)) {
         prices[platform] = price;
       }
     }
-    return prices;
-  } catch { return {}; }
+    return { prices, productImage };
+  } catch { return { prices: {}, productImage: null }; }
 }
 
 // Organic site: search — for stores that block Google Shopping (Flipkart, Vijay Sales)
@@ -138,7 +140,7 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q') ?? '';
   if (!q) return Response.json([]);
 
-  const [live, flipkartPrice, vijayPrice, mock] = await Promise.all([
+  const [{ prices: live, productImage }, flipkartPrice, vijayPrice, mock] = await Promise.all([
     fetchLivePrices(q),
     fetchFlipkartPrice(q),
     fetchVijayPrice(q),
@@ -148,7 +150,7 @@ export async function GET(request: NextRequest) {
   if (flipkartPrice) live['flipkart']    = flipkartPrice;
   if (vijayPrice)    live['vijay_sales'] = vijayPrice;
 
-  const result: PlatformPrice[] = PLATFORMS.map((platform) => {
+  const prices: PlatformPrice[] = PLATFORMS.map((platform) => {
     const livePrice = live[platform];
     if (livePrice) return { platform, price: livePrice, available: true };
 
@@ -158,5 +160,5 @@ export async function GET(request: NextRequest) {
     return { platform, price: Math.round(variance / 10) * 10, available: true };
   });
 
-  return Response.json(result);
+  return Response.json({ prices, productImage });
 }
