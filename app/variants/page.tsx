@@ -36,7 +36,7 @@ function VariantsContent() {
             seen.add(title);
             unique.push({
               title,
-              image: item.thumbnail,
+              image: item.thumbnail || item.imageUrl,
               price: item.price,
             });
           }

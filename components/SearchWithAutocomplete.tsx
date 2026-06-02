@@ -39,9 +39,9 @@ export function SearchWithAutocomplete() {
         const data = await res.json();
         const items = (data.shopping ?? [])
           .slice(0, 6)
-          .map((item: { title?: string; thumbnail?: string }) => ({
+          .map((item: { title?: string; thumbnail?: string; imageUrl?: string }) => ({
             title: item.title ?? '',
-            image: item.thumbnail,
+            image: item.thumbnail || item.imageUrl,
             isBroad: isBroadSearch(query),
           }))
           .filter((s: Suggestion) => s.title);
