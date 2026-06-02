@@ -29,10 +29,9 @@ function buyUrl(platform: string, query: string) {
 }
 
 function getProductLink(p: PlatformPrice): string {
-  // Use actual product link from Serper if available
-  if (p.link) return p.link;
-  // Fallback to search URL
-  return buyUrl(p.platform, (p.title || '').split(' ').slice(0, 3).join(' '));
+  // Use direct platform search with product title (more reliable than Serper's Google Shopping redirect)
+  const searchQuery = p.title ? p.title.split(' ').slice(0, 4).join(' ') : query;
+  return buyUrl(p.platform, searchQuery);
 }
 
 function ResultsContent() {
