@@ -13,7 +13,10 @@ export async function recordPriceSnapshot(
 ): Promise<void> {
   try {
     const database = await db();
-    if (!database) return;
+    if (!database) {
+      console.warn('Firestore not initialized for price snapshot');
+      return;
+    }
 
     const pricesArray = Object.values(prices).filter(p => p > 0);
     const averagePrice = pricesArray.length > 0
