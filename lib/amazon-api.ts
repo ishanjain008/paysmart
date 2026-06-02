@@ -90,10 +90,11 @@ export async function searchAmazonProduct(query: string): Promise<AmazonProduct 
     }
 
     const data = await response.json();
+    console.log('[searchAmazonProduct] API response keys:', Object.keys(data).join(','));
     const item = data.SearchResult?.Items?.[0];
 
     if (!item?.ASIN) {
-      console.warn('[searchAmazonProduct] No products found');
+      console.warn('[searchAmazonProduct] No products found', { hasSearchResult: !!data.SearchResult, itemCount: data.SearchResult?.Items?.length });
       return null;
     }
 
