@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Search, Loader2, X } from 'lucide-react';
+import { Search, Loader2, X, Link2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface Suggestion {
@@ -11,10 +11,14 @@ interface Suggestion {
 
 export function SearchWithAutocomplete() {
   const router = useRouter();
+  const [mode, setMode] = useState<'text' | 'link'>('text');
   const [query, setQuery] = useState<string>('');
+  const [linkInput, setLinkInput] = useState<string>('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [linkLoading, setLinkLoading] = useState<boolean>(false);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [linkError, setLinkError] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -75,29 +79,123 @@ export function SearchWithAutocomplete() {
     }
   };
 
+  const handleLinkSubmit = async () => {
+    if (!linkInput.trim()) return;
+    setLinkError('');
+    setLinkLoading(true);
+
+    try {
+      const res = await fetch('/api/extract-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: linkInput }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setLinkError(data.error || 'Failed to extract product');
+        setLinkLoading(false);
+        return;
+      }
+
+      // Navigate to results with the extracted product title
+      router.push(`/results?q=${encodeURIComponent(data.title)}`);
+    } catch (error) {
+      setLinkError('Failed to process the link. Please try again.');
+      setLinkLoading(false);
+    }
+  };
+
   return (
     <div className="relative w-full">
-      <div className="relative">
-        <Search size={16} className="absolute left-4 top-3.5 text-gray-300" />
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="Search products (e.g., iPhone 16, MacBook, Samsung TV)…"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          onFocus={() => query.trim() && setShowSuggestions(true)}
-          className="w-full bg-white border border-gray-200 rounded-2xl pl-10 pr-10 py-3 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-        />
-        {query && (
-          <button
-            onClick={() => { setQuery(''); setSuggestions([]); setShowSuggestions(false); }}
-            className="absolute right-3 top-3 text-gray-300 hover:text-gray-600"
-          >
-            <X size={16} />
-          </button>
-        )}
+      {/* Mode tabs */}
+      <div className="flex gap-2 mb-3 border-b border-gray-100">
+        <button
+          onClick={() => { setMode('text'); setQuery(''); setSuggestions([]); setShowSuggestions(false); setLinkError(''); }}
+          className={`pb-2 text-sm font-medium transition-colors ${
+            mode === 'text'
+              ? 'text-blue-600 border-b-2 border-blue-600 -mb-[2px]'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Search
+        </button>
+        <button
+          onClick={() => { setMode('link'); setLinkInput(''); setLinkError(''); }}
+          className={`pb-2 text-sm font-medium transition-colors flex items-center gap-1 ${
+            mode === 'link'
+              ? 'text-blue-600 border-b-2 border-blue-600 -mb-[2px]'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          <Link2 size={14} /> Paste link
+        </button>
       </div>
+
+      {/* Text search mode */}
+      {mode === 'text' && (
+        <div className="relative">
+          <Search size={16} className="absolute left-4 top-3.5 text-gray-300" />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search products (e.g., iPhone 16, MacBook, Samsung TV)…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            onFocus={() => query.trim() && setShowSuggestions(true)}
+            className="w-full bg-white border border-gray-200 rounded-2xl pl-10 pr-10 py-3 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+          />
+          {query && (
+            <button
+              onClick={() => { setQuery(''); setSuggestions([]); setShowSuggestions(false); }}
+              className="absolute right-3 top-3 text-gray-300 hover:text-gray-600"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Link paste mode */}
+      {mode === 'link' && (
+        <div className="space-y-2">
+          <div className="relative">
+            <Link2 size={16} className="absolute left-4 top-3.5 text-gray-300" />
+            <input
+              type="text"
+              placeholder="Paste Amazon, Flipkart, Croma, Vijay Sales, or Reliance Digital product link…"
+              value={linkInput}
+              onChange={e => { setLinkInput(e.target.value); setLinkError(''); }}
+              onKeyDown={e => e.key === 'Enter' && handleLinkSubmit()}
+              disabled={linkLoading}
+              className="w-full bg-white border border-gray-200 rounded-2xl pl-10 pr-10 py-3 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 disabled:opacity-50"
+            />
+            {linkInput && !linkLoading && (
+              <button
+                onClick={() => { setLinkInput(''); setLinkError(''); }}
+                className="absolute right-3 top-3 text-gray-300 hover:text-gray-600"
+              >
+                <X size={16} />
+              </button>
+            )}
+            {linkLoading && (
+              <Loader2 size={16} className="absolute right-3 top-3 text-blue-400 animate-spin" />
+            )}
+          </div>
+          {linkError && (
+            <p className="text-xs text-red-500">{linkError}</p>
+          )}
+          <button
+            onClick={handleLinkSubmit}
+            disabled={!linkInput.trim() || linkLoading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium py-2.5 rounded-xl text-sm transition-colors"
+          >
+            {linkLoading ? 'Extracting product…' : 'Compare prices'}
+          </button>
+        </div>
+      )}
 
       {showSuggestions && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 max-h-96 overflow-y-auto">

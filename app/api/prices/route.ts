@@ -6,6 +6,9 @@ interface PlatformPrice {
   platform: Platform;
   price: number;
   available: boolean;
+  title?: string;
+  image?: string;
+  link?: string;
 }
 
 const PLATFORMS: Platform[] = ['amazon', 'flipkart', 'croma', 'vijay_sales', 'reliance_digital'];
@@ -35,7 +38,7 @@ function serperHeaders() {
 // Google Shopping — covers Amazon, Reliance Digital, Croma
 async function fetchLivePrices(
   query: string
-): Promise<{ prices: Partial<Record<Platform, number>>; productImage: string | null }> {
+): Promise<{ prices: Partial<Record<Platform, { price: number; title?: string; image?: string }>>; productImage: string | null }> {
   if (!process.env.SERPER_KEY) return { prices: {}, productImage: null };
   try {
     const res = await fetch('https://google.serper.dev/shopping', {
@@ -47,18 +50,23 @@ async function fetchLivePrices(
     if (!res.ok) return { prices: {}, productImage: null };
 
     const data = await res.json();
-    const items: { source?: string; price?: string; thumbnail?: string }[] = data.shopping ?? [];
+    const items: { source?: string; price?: string; thumbnail?: string; title?: string; link?: string }[] = data.shopping ?? [];
 
     // Grab the first product image from any result
     const productImage = items.find((r) => r.thumbnail)?.thumbnail ?? null;
 
-    const prices: Partial<Record<Platform, number>> = {};
+    const prices: Partial<Record<Platform, { price: number; title?: string; image?: string; link?: string }>> = {};
     for (const r of items) {
       const price = parseInt((r.price ?? '').replace(/[₹,\s]/g, ''), 10);
       if (isNaN(price) || price <= 0) continue;
       const platform = matchPlatform(r.source ?? '');
-      if (platform && (!prices[platform] || price < prices[platform]!)) {
-        prices[platform] = price;
+      if (platform && (!prices[platform] || price < prices[platform].price)) {
+        prices[platform] = {
+          price,
+          title: r.title,
+          image: r.thumbnail,
+          link: r.link,
+        };
       }
     }
     return { prices, productImage };
@@ -147,12 +155,12 @@ export async function GET(request: NextRequest) {
     Promise.resolve(mockFallback(q)),
   ]);
 
-  if (flipkartPrice) live['flipkart']    = flipkartPrice;
-  if (vijayPrice)    live['vijay_sales'] = vijayPrice;
+  if (flipkartPrice) live['flipkart']    = { price: flipkartPrice };
+  if (vijayPrice)    live['vijay_sales'] = { price: vijayPrice };
 
   const prices: PlatformPrice[] = PLATFORMS.map((platform) => {
-    const livePrice = live[platform];
-    if (livePrice) return { platform, price: livePrice, available: true };
+    const liveData = live[platform];
+    if (liveData) return { platform, price: liveData.price, title: liveData.title, image: liveData.image, link: liveData.link, available: true };
 
     const base = mock[platform];
     if (!base) return { platform, price: 0, available: false };

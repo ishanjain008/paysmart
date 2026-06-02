@@ -4,7 +4,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 import { Playfair_Display } from 'next/font/google';
 import { DesktopNav } from '@/components/DesktopNav';
+import { WatchButton } from '@/components/WatchButton';
+import { PriceIndicator } from '@/components/PriceIndicator';
 import { fetchPrices } from '@/lib/fetchPrices';
+import { recordPriceSnapshot } from '@/lib/priceHistory';
 import { PlatformPrice } from '@/lib/calculator';
 import { PLATFORMS, Platform } from '@/data/offers';
 import { useSearchHistory } from '@/lib/useSearchHistory';
@@ -25,6 +28,13 @@ function buyUrl(platform: string, query: string) {
   return `https://www.${domain}/s?k=${encodeURIComponent(query)}`;
 }
 
+function getProductLink(p: PlatformPrice): string {
+  // Use actual product link from Serper if available
+  if (p.link) return p.link;
+  // Fallback to search URL
+  return buyUrl(p.platform, (p.title || '').split(' ').slice(0, 3).join(' '));
+}
+
 function ResultsContent() {
   const params = useSearchParams();
   const router = useRouter();
@@ -43,6 +53,17 @@ function ResultsContent() {
         setPrices(p);
         setProductImage(img);
         setLoading(false);
+
+        // Record price snapshot for history tracking
+        const priceMap: Record<string, number> = {};
+        p.forEach((price) => {
+          if (price.available) {
+            priceMap[price.platform] = price.price;
+          }
+        });
+        recordPriceSnapshot(query, priceMap).catch(err =>
+          console.error('Error recording price snapshot:', err)
+        );
       })
       .catch(() => setLoading(false));
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -62,7 +83,7 @@ function ResultsContent() {
 
       <main className="flex-1 px-8 md:px-14 py-12">
         {/* Product header */}
-        <div className="flex items-center gap-6 mb-2">
+        <div className="flex items-center gap-6 mb-6">
           {productImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -89,6 +110,17 @@ function ResultsContent() {
             <p className="text-sm text-gray-400 mt-1">
               {loading ? 'Fetching live prices…' : `${available.length} stores · prices before your card benefits`}
             </p>
+            {!loading && available.length > 0 && (
+              <div className="mt-3 space-y-3">
+                <WatchButton
+                  productTitle={query}
+                  productImage={productImage ?? undefined}
+                  currentPrice={lowestPrice}
+                  platforms={available.map(p => p.platform)}
+                />
+                <PriceIndicator productTitle={query} currentPrice={lowestPrice} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -102,10 +134,10 @@ function ResultsContent() {
             return (
               <a
                 key={platform}
-                href={p?.available ? buyUrl(platform, query) : '#'}
+                href={p?.available ? getProductLink(p) : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`rounded-2xl border p-5 flex flex-col gap-3 transition-all cursor-pointer ${
+                className={`rounded-2xl border p-4 flex flex-col gap-3 transition-all cursor-pointer ${
                   isLowest
                     ? 'border-blue-200 bg-blue-50 ring-2 ring-blue-200 hover:bg-blue-100'
                     : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
@@ -119,20 +151,39 @@ function ResultsContent() {
                 </div>
 
                 {loading ? (
-                  <div className="h-8 bg-gray-100 rounded-lg animate-pulse" />
+                  <div className="space-y-2">
+                    <div className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+                    <div className="h-6 bg-gray-100 rounded-lg animate-pulse" />
+                  </div>
                 ) : p?.available ? (
                   <>
-                    <div className={`text-2xl font-bold ${isLowest ? 'text-blue-700' : 'text-gray-900'}`}>
-                      {fmt(p.price)}
+                    {p.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/image?url=${encodeURIComponent(p.image)}`}
+                        alt={p.title}
+                        className="w-full h-16 object-contain rounded-lg bg-gray-100"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <div className="flex flex-col gap-1">
+                      {p.title && (
+                        <p className="text-xs text-gray-600 line-clamp-2 leading-tight">
+                          {p.title}
+                        </p>
+                      )}
+                      <div className={`text-xl font-bold ${isLowest ? 'text-blue-700' : 'text-gray-900'}`}>
+                        {fmt(p.price)}
+                      </div>
                     </div>
                     {isLowest && (
-                      <span className="text-[11px] font-semibold text-blue-600 bg-blue-100 rounded-full px-2.5 py-0.5 self-start">
+                      <span className="text-[10px] font-semibold text-blue-600 bg-blue-100 rounded-full px-2 py-0.5 self-start">
                         Lowest
                       </span>
                     )}
                   </>
                 ) : (
-                  <div className="text-sm text-gray-300 italic mt-1">Not listed</div>
+                  <div className="text-xs text-gray-300 italic mt-1">Not listed</div>
                 )}
               </a>
             );
