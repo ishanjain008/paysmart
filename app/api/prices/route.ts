@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { searchAmazonProduct } from '@/lib/amazon-api';
 
 type Platform = 'amazon' | 'flipkart' | 'croma' | 'vijay_sales' | 'reliance_digital';
 
@@ -85,69 +86,20 @@ function buildAmazonLink(url: string | undefined): string | undefined {
   return undefined;
 }
 
-// Fetch Amazon product link and price
+// Fetch Amazon product link and price using Product Advertising API
 async function fetchAmazonLinkAndPrice(query: string): Promise<{ link?: string; price?: number }> {
-  const serperKey = process.env.SERPER_KEY;
-  if (!serperKey) return {};
   try {
-    const res = await fetch('https://google.serper.dev/search', {
-      method: 'POST',
-      headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: `${query} site:amazon.in`, gl: 'in', hl: 'en', num: 5 }),
-      next: { revalidate: 10800 },
-    });
-    if (!res.ok) return {};
-    const data = await res.json();
-    for (const r of (data.organic ?? [])) {
-      if (r.link && r.link.includes('/dp/')) {
-        const link = buildAmazonLink(r.link);
-        // Fetch the actual product page to get real price
-        const price = await fetchAmazonPrice(r.link);
-        return { link, price };
-      }
+    const product = await searchAmazonProduct(query);
+    if (product) {
+      return {
+        link: product.url,
+        price: product.price,
+      };
     }
   } catch (e) {
-    // Serper API failure
+    console.error('[fetchAmazonLinkAndPrice]', e);
   }
   return {};
-}
-
-// Fetch actual price from Amazon product page
-async function fetchAmazonPrice(productUrl: string): Promise<number | undefined> {
-  try {
-    const res = await fetch(productUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
-    if (!res.ok) return undefined;
-    const html = await res.text();
-
-    // Look for price patterns in HTML
-    // Amazon uses various price selectors, try multiple patterns
-    const patterns = [
-      /₹\s*([0-9,]+)(?:\.\d+)?(?=<|&|[\s"])/g,  // General rupee price pattern
-      /"price":"([0-9.]+)"/g,  // JSON price format
-    ];
-
-    const prices: number[] = [];
-    for (const pattern of patterns) {
-      let match;
-      while ((match = pattern.exec(html)) !== null) {
-        const priceStr = match[1].replace(/,/g, '');
-        const price = parseFloat(priceStr);
-        if (price > 1000 && price < 10000000) { // Reasonable product price range
-          prices.push(Math.round(price));
-        }
-      }
-    }
-
-    // Return the first reasonable price found
-    if (prices.length > 0) {
-      return prices[0];
-    }
-  } catch (e) {
-    // Page fetch failure
-  }
-  return undefined;
 }
 
 // ── Route handler ─────────────────────────────────────────────────
