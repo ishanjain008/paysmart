@@ -68,7 +68,7 @@ export default function HomePage() {
 
         <p className="text-base md:text-lg text-gray-400 mb-10 leading-relaxed max-w-lg">
           Tell me what you&apos;re after. I&apos;ll find it across stores and show the
-          price <em className="text-gray-500">after</em> your card&apos;s offer.
+          price <em className="text-gray-500">after </em>your card&apos;s offer.
         </p>
 
         {/* ── Search bar with auto-complete ── */}
