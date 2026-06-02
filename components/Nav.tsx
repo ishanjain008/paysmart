@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 
 // ── Auth button + sheet ────────────────────────────────────────────
 
-function UserButton() {
+export function UserButton() {
   const { user, authLoading, signIn, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
