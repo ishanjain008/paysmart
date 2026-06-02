@@ -20,7 +20,14 @@ export async function searchAmazonProduct(query: string): Promise<AmazonProduct 
   }
 
   try {
-    const response = await fetch('/api/amazon-search', {
+    // Get the base URL for API calls
+    const baseUrl = typeof window !== 'undefined'
+      ? window.location.origin
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000';
+
+    const response = await fetch(`${baseUrl}/api/amazon-search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
