@@ -1,5 +1,5 @@
 export type BenefitType = 'flat_cashback' | 'percentage_cashback' | 'reward_points' | 'bank_offer';
-export type Platform = 'amazon' | 'flipkart' | 'croma' | 'reliance_digital' | 'tata_cliq';
+export type Platform = 'amazon' | 'flipkart' | 'croma' | 'vijay_sales' | 'reliance_digital' | 'tata_cliq';
 
 export interface Offer {
   id: string;
@@ -43,20 +43,20 @@ export const POINTS_VALUE: Record<string, number> = {
 
 // ── Earn rates (% of spend earned as points / cashback) ──────────
 export const EARN_RATES: Record<string, Partial<Record<Platform, number>>> = {
-  hdfc_infinia:   { amazon: 3.3, flipkart: 3.3, croma: 3.3, reliance_digital: 3.3, tata_cliq: 3.3 },
-  hdfc_regalia:   { amazon: 2.0, flipkart: 2.0, croma: 2.0, reliance_digital: 2.0, tata_cliq: 2.0 },
-  axis_magnus:    { amazon: 1.2, flipkart: 1.2, croma: 1.2, reliance_digital: 1.2, tata_cliq: 1.2 },
-  axis_ace:       { amazon: 2.0, flipkart: 1.5, croma: 1.5, reliance_digital: 1.5, tata_cliq: 1.5 },
-  axis_flipkart:  { amazon: 1.5, flipkart: 5.0, croma: 1.5, reliance_digital: 1.5, tata_cliq: 1.5 },
-  icici_amazon:   { amazon: 5.0, flipkart: 1.0, croma: 1.0, reliance_digital: 1.0, tata_cliq: 1.0 },
-  sbi_cashback:   { amazon: 5.0, flipkart: 5.0, croma: 5.0, reliance_digital: 5.0, tata_cliq: 5.0 },
-  kotak_811:      { amazon: 2.0, flipkart: 2.0, croma: 2.0, reliance_digital: 2.0, tata_cliq: 2.0 },
-  idfc_wealth:    { amazon: 1.5, flipkart: 1.5, croma: 1.5, reliance_digital: 1.5, tata_cliq: 1.5 },
-  hdfc_millennia: { amazon: 1.0, flipkart: 1.0, croma: 1.0, reliance_digital: 1.0, tata_cliq: 1.0 },
-  sbi_simplysave: { amazon: 1.0, flipkart: 1.0, croma: 1.0, reliance_digital: 1.0, tata_cliq: 1.0 },
-  paytm_wallet:   { amazon: 0,   flipkart: 0,   croma: 0,   reliance_digital: 0,   tata_cliq: 0   },
-  amazon_pay:     { amazon: 1.0, flipkart: 0,   croma: 0,   reliance_digital: 0,   tata_cliq: 0   },
-  phonepe_wallet: { amazon: 0,   flipkart: 0,   croma: 0,   reliance_digital: 0,   tata_cliq: 0   },
+  hdfc_infinia:   { amazon: 3.3, flipkart: 3.3, croma: 3.3, vijay_sales: 3.3, reliance_digital: 3.3, tata_cliq: 3.3 },
+  hdfc_regalia:   { amazon: 2.0, flipkart: 2.0, croma: 2.0, vijay_sales: 2.0, reliance_digital: 2.0, tata_cliq: 2.0 },
+  axis_magnus:    { amazon: 1.2, flipkart: 1.2, croma: 1.2, vijay_sales: 1.2, reliance_digital: 1.2, tata_cliq: 1.2 },
+  axis_ace:       { amazon: 2.0, flipkart: 1.5, croma: 1.5, vijay_sales: 1.5, reliance_digital: 1.5, tata_cliq: 1.5 },
+  axis_flipkart:  { amazon: 1.5, flipkart: 5.0, croma: 1.5, vijay_sales: 1.5, reliance_digital: 1.5, tata_cliq: 1.5 },
+  icici_amazon:   { amazon: 5.0, flipkart: 1.0, croma: 1.0, vijay_sales: 1.0, reliance_digital: 1.0, tata_cliq: 1.0 },
+  sbi_cashback:   { amazon: 5.0, flipkart: 5.0, croma: 5.0, vijay_sales: 5.0, reliance_digital: 5.0, tata_cliq: 5.0 },
+  kotak_811:      { amazon: 2.0, flipkart: 2.0, croma: 2.0, vijay_sales: 2.0, reliance_digital: 2.0, tata_cliq: 2.0 },
+  idfc_wealth:    { amazon: 1.5, flipkart: 1.5, croma: 1.5, vijay_sales: 1.5, reliance_digital: 1.5, tata_cliq: 1.5 },
+  hdfc_millennia: { amazon: 1.0, flipkart: 1.0, croma: 1.0, vijay_sales: 1.0, reliance_digital: 1.0, tata_cliq: 1.0 },
+  sbi_simplysave: { amazon: 1.0, flipkart: 1.0, croma: 1.0, vijay_sales: 1.0, reliance_digital: 1.0, tata_cliq: 1.0 },
+  paytm_wallet:   { amazon: 0,   flipkart: 0,   croma: 0,   vijay_sales: 0,   reliance_digital: 0,   tata_cliq: 0   },
+  amazon_pay:     { amazon: 1.0, flipkart: 0,   croma: 0,   vijay_sales: 0,   reliance_digital: 0,   tata_cliq: 0   },
+  phonepe_wallet: { amazon: 0,   flipkart: 0,   croma: 0,   vijay_sales: 0,   reliance_digital: 0,   tata_cliq: 0   },
 };
 
 // ── Active bank offers ────────────────────────────────────────────
@@ -173,6 +173,7 @@ export const PLATFORMS: Record<Platform, { name: string; color: string; logo: st
   amazon:           { name: 'Amazon',           color: '#FF9900', logo: '🛒' },
   flipkart:         { name: 'Flipkart',         color: '#F7AE00', logo: '🛍️' },
   croma:            { name: 'Croma',            color: '#E31837', logo: '🔌' },
+  vijay_sales:      { name: 'Vijay Sales',      color: '#1A237E', logo: '🏪' },
   reliance_digital: { name: 'Reliance Digital', color: '#0077B6', logo: '📱' },
   tata_cliq:        { name: 'Tata Cliq',        color: '#7B2D8B', logo: '🛒' },
 };

@@ -15,7 +15,7 @@ function fmt(n: number) {
   return '₹' + n.toLocaleString('en-IN');
 }
 
-const PLATFORM_ORDER: Platform[] = ['amazon', 'flipkart', 'croma', 'reliance_digital', 'tata_cliq'];
+const PLATFORM_ORDER: Platform[] = ['amazon', 'flipkart', 'croma', 'vijay_sales', 'reliance_digital', 'tata_cliq'];
 
 function ResultsContent() {
   const params = useSearchParams();

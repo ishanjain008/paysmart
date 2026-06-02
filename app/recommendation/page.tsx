@@ -26,6 +26,7 @@ function buyUrl(platform: string, query: string) {
   const domain =
     platform === 'reliance_digital' ? 'reliancedigital.in' :
     platform === 'tata_cliq' ? 'tatacliq.com' :
+    platform === 'vijay_sales' ? 'vijaysales.com' :
     `${platform}.in`;
   return `https://www.${domain}/s?k=${encodeURIComponent(query)}`;
 }
