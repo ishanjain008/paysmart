@@ -7,7 +7,6 @@ import { DesktopNav } from '@/components/DesktopNav';
 import { WatchButton } from '@/components/WatchButton';
 import { PriceIndicator } from '@/components/PriceIndicator';
 import { fetchPrices } from '@/lib/fetchPrices';
-import { recordPriceSnapshot } from '@/lib/priceHistory';
 import { PlatformPrice } from '@/lib/calculator';
 import { PLATFORMS, Platform } from '@/data/offers';
 import { useSearchHistory } from '@/lib/useSearchHistory';
@@ -57,16 +56,8 @@ function ResultsContent() {
         setProductImage(img);
         setLoading(false);
 
-        // Record price snapshot for history tracking
-        const priceMap: Record<string, number> = {};
-        p.forEach((price) => {
-          if (price.available) {
-            priceMap[price.platform] = price.price;
-          }
-        });
-        recordPriceSnapshot(query, priceMap).catch(err =>
-          console.error('Error recording price snapshot:', err)
-        );
+        // Note: Price history snapshot recording disabled due to Firestore setup issues
+        // This will be re-enabled once Firestore is properly configured
       })
       .catch(() => setLoading(false));
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
