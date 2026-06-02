@@ -40,7 +40,11 @@ function buyUrl(platform: string, query: string) {
 }
 
 function getProductLink(p: PlatformPrice, fallbackQuery: string): string {
-  // Use platform search with product title and affiliate tag
+  // For Amazon, prefer direct product link from API
+  if (p.platform === 'amazon' && p.link) {
+    return p.link;
+  }
+  // For other platforms, use search
   const searchQuery = p.title ? p.title.split(' ').slice(0, 4).join(' ') : fallbackQuery;
   return buyUrl(p.platform, searchQuery);
 }
