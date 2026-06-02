@@ -90,11 +90,15 @@ export async function searchAmazonProduct(query: string): Promise<AmazonProduct 
     }
 
     const data = await response.json();
-    console.log('[searchAmazonProduct] API response keys:', Object.keys(data).join(','));
+    console.log('[searchAmazonProduct] API response:', JSON.stringify(data).substring(0, 500));
     const item = data.SearchResult?.Items?.[0];
 
     if (!item?.ASIN) {
-      console.warn('[searchAmazonProduct] No products found', { hasSearchResult: !!data.SearchResult, itemCount: data.SearchResult?.Items?.length });
+      console.warn('[searchAmazonProduct] No products found', {
+        hasSearchResult: !!data.SearchResult,
+        itemCount: data.SearchResult?.Items?.length,
+        dataKeys: Object.keys(data).join(',')
+      });
       return null;
     }
 
@@ -102,6 +106,7 @@ export async function searchAmazonProduct(query: string): Promise<AmazonProduct 
     const title = item.ItemInfo?.Title?.DisplayValue || query;
     const priceStr = item.Offers?.Listings?.[0]?.Price?.Amount || '0';
     const price = parseInt(priceStr.toString().replace(/[^0-9]/g, ''), 10) || 0;
+    console.log('[searchAmazonProduct] Extracted:', { asin, titleLength: title.length, price });
 
     const product: AmazonProduct = {
       asin,
