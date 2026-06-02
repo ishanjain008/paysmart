@@ -32,13 +32,18 @@ export async function POST(request: NextRequest) {
     const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID || '';
     const AWS_SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY || '';
 
+    console.log('[Amazon Search] Starting');
     console.log('[Amazon Search] Query:', query);
-    console.log('[Amazon Search] Credentials available:', !!AWS_ACCESS_KEY && !!AWS_SECRET_KEY && !!AMAZON_ASSOCIATE_ID);
+    console.log('[Amazon Search] AMAZON_ASSOCIATE_ID:', AMAZON_ASSOCIATE_ID);
+    console.log('[Amazon Search] AWS_ACCESS_KEY exists:', !!AWS_ACCESS_KEY);
+    console.log('[Amazon Search] AWS_SECRET_KEY exists:', !!AWS_SECRET_KEY);
 
     if (!AWS_ACCESS_KEY || !AWS_SECRET_KEY || !AMAZON_ASSOCIATE_ID) {
       console.error('[Amazon Search] Missing credentials');
-      return Response.json({ error: 'AWS credentials not configured' }, { status: 400 });
+      return Response.json({ error: 'AWS credentials not configured', details: { AWS_ACCESS_KEY: !!AWS_ACCESS_KEY, AWS_SECRET_KEY: !!AWS_SECRET_KEY, AMAZON_ASSOCIATE_ID: !!AMAZON_ASSOCIATE_ID } }, { status: 400 });
     }
+
+    console.log('[Amazon Search] Credentials check passed');
 
     const timestamp = new Date().toISOString();
     const amzDate = timestamp.replace(/[:-]|\.\d{3}/g, '');
