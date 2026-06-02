@@ -1,9 +1,6 @@
 import type { NextRequest } from 'next/server';
 import crypto from 'crypto';
 
-const AMAZON_ASSOCIATE_ID = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_ID || '';
-const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID || '';
-const AWS_SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY || '';
 const AWS_REGION = 'us-east-1';
 const HOST = 'webservices.amazon.in';
 
@@ -29,6 +26,12 @@ function getSignatureKey(key: string, dateStamp: string, regionName: string, ser
 export async function POST(request: NextRequest) {
   try {
     const { query } = await request.json();
+
+    // Read credentials at runtime, not module load time
+    const AMAZON_ASSOCIATE_ID = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_ID || '';
+    const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID || '';
+    const AWS_SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY || '';
+
     console.log('[Amazon Search] Query:', query);
     console.log('[Amazon Search] Credentials available:', !!AWS_ACCESS_KEY && !!AWS_SECRET_KEY && !!AMAZON_ASSOCIATE_ID);
 
