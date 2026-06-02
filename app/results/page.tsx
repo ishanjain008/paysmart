@@ -5,7 +5,6 @@ import { ArrowRight, RefreshCw } from 'lucide-react';
 import { Playfair_Display } from 'next/font/google';
 import { DesktopNav } from '@/components/DesktopNav';
 import { WatchButton } from '@/components/WatchButton';
-import { PriceIndicator } from '@/components/PriceIndicator';
 import { fetchPrices } from '@/lib/fetchPrices';
 import { PlatformPrice } from '@/lib/calculator';
 import { PLATFORMS, Platform } from '@/data/offers';
@@ -105,14 +104,13 @@ function ResultsContent() {
               {loading ? 'Fetching live prices…' : `${available.length} stores · prices before your card benefits`}
             </p>
             {!loading && available.length > 0 && (
-              <div className="mt-3 space-y-3">
+              <div className="mt-3">
                 <WatchButton
                   productTitle={query}
                   productImage={productImage ?? undefined}
                   currentPrice={lowestPrice}
                   platforms={available.map(p => p.platform)}
                 />
-                <PriceIndicator productTitle={query} currentPrice={lowestPrice} />
               </div>
             )}
           </div>
