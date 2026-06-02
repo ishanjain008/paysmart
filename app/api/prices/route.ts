@@ -1,5 +1,4 @@
 import type { NextRequest } from 'next/server';
-import { searchAmazonProduct } from '@/lib/amazon-api';
 
 type Platform = 'amazon' | 'flipkart' | 'croma' | 'vijay_sales' | 'reliance_digital';
 
@@ -28,6 +27,39 @@ function matchPlatform(source: string): Platform | null {
     if (patterns.some((p) => s.includes(p))) return platform;
   }
   return null;
+}
+
+// Extract ASIN from Amazon URLs and build direct product links
+function buildAmazonLink(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    // Try to extract ASIN from various Amazon URL formats
+    const patterns = [
+      /\/dp\/([A-Z0-9]{10})/,        // /dp/ASIN format
+      /\/gp\/product\/([A-Z0-9]{10})/, // /gp/product/ASIN format
+      /productid:(\d+)/,              // Google Shopping format: productid:ASIN
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        const identifier = match[1];
+        // For productid format, we need to try to convert it
+        if (pattern === /productid:(\d+)/) {
+          // This is a numeric ID from Google Shopping, not an ASIN
+          // We can't directly use it
+          continue;
+        }
+        const associateId = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_ID;
+        if (associateId) {
+          return `https://www.amazon.in/dp/${identifier}?tag=${associateId}`;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[buildAmazonLink] Error:', e);
+  }
+  return undefined;
 }
 
 // ── Serper.dev helpers ────────────────────────────────────────────
@@ -62,11 +94,17 @@ async function fetchLivePrices(
       if (isNaN(price) || price <= 0) continue;
       const platform = matchPlatform(r.source ?? '');
       if (platform && (!prices[platform] || price < prices[platform].price)) {
+        let link = r.link;
+        // For Amazon results, try to build direct product links
+        if (platform === 'amazon') {
+          const directLink = buildAmazonLink(link);
+          if (directLink) link = directLink;
+        }
         prices[platform] = {
           price,
           title: r.title,
           image: r.thumbnail,
-          link: r.link,
+          link,
         };
       }
     }
@@ -151,28 +189,18 @@ export async function GET(request: NextRequest) {
 
   console.log('[prices/route] Starting with query:', q);
 
-  const [{ prices: live, productImage }, flipkartPrice, vijayPrice, mock, amazonProduct] = await Promise.all([
+  const [{ prices: live, productImage }, flipkartPrice, vijayPrice, mock] = await Promise.all([
     fetchLivePrices(q),
     fetchFlipkartPrice(q),
     fetchVijayPrice(q),
     Promise.resolve(mockFallback(q)),
-    searchAmazonProduct(q),
   ]);
-
-  console.log('[prices/route] Amazon product result:', amazonProduct);
 
   if (flipkartPrice) live['flipkart']    = { price: flipkartPrice };
   if (vijayPrice)    live['vijay_sales'] = { price: vijayPrice };
 
-  // If Amazon search successful, use direct product link
-  if (amazonProduct) {
-    console.log('[prices/route] Using direct Amazon link');
-    live['amazon'] = {
-      price: amazonProduct.price || live['amazon']?.price || 0,
-      title: amazonProduct.title,
-      link: amazonProduct.url,
-    };
-  }
+  // Note: Amazon links are now extracted directly from Serper results
+  // and converted to direct product links via buildAmazonLink()
 
   const prices: PlatformPrice[] = PLATFORMS.map((platform) => {
     const liveData = live[platform];
