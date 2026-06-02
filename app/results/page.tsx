@@ -58,7 +58,7 @@ function ResultsContent() {
           {productImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={productImage}
+              src={`/api/image?url=${encodeURIComponent(productImage)}`}
               alt={query}
               className="w-20 h-20 object-contain rounded-2xl bg-gray-50 border border-gray-100 flex-shrink-0"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
