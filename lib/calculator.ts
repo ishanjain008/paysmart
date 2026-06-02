@@ -45,8 +45,10 @@ export function daysUntilExpiry(dateStr: string): number {
 // ── Main computation ─────────────────────────────────────────────
 export function computeRecommendations(
   prices: PlatformPrice[],
-  userCardIds: string[]
+  userCardIds: string[],
+  liveOffers?: Offer[]
 ): Recommendation[] {
+  const offersToUse = (liveOffers && liveOffers.length > 0) ? liveOffers : OFFERS;
   const results: Recommendation[] = [];
 
   for (const { platform, price, available } of prices) {
@@ -60,7 +62,7 @@ export function computeRecommendations(
       let effectivePrice = price;
 
       // ── Step 1: Find active bank offer for this card × platform ──
-      const bankOffer = OFFERS.find(
+      const bankOffer = offersToUse.find(
         (o) =>
           o.cardId === cardId &&
           o.platform === platform &&

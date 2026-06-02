@@ -25,7 +25,6 @@ function cardName(id: string) {
 function buyUrl(platform: string, query: string) {
   const domain =
     platform === 'reliance_digital' ? 'reliancedigital.in' :
-    platform === 'tata_cliq' ? 'tatacliq.com' :
     platform === 'vijay_sales' ? 'vijaysales.com' :
     `${platform}.in`;
   return `https://www.${domain}/s?k=${encodeURIComponent(query)}`;
@@ -43,13 +42,27 @@ function RecoContent() {
     if (!loaded) return;
     const raw = sessionStorage.getItem('paysmart_prices');
     if (!raw) { setNoData(true); return; }
-    try {
-      const prices: PlatformPrice[] = JSON.parse(raw);
-      const cardIds = profile.cardIds.length > 0
-        ? profile.cardIds
-        : CARDS.filter((c) => c.type === 'credit').slice(0, 4).map((c) => c.id);
-      setRecos(computeRecommendations(prices, cardIds));
-    } catch { setNoData(true); }
+
+    async function compute() {
+      try {
+        const prices: PlatformPrice[] = JSON.parse(raw!);
+        const cardIds = profile.cardIds.length > 0
+          ? profile.cardIds
+          : CARDS.filter((c) => c.type === 'credit').slice(0, 4).map((c) => c.id);
+
+        // Fetch live offers (falls back to static if Firestore not set up)
+        let liveOffers;
+        try {
+          const res = await fetch('/api/offers');
+          const data = await res.json();
+          liveOffers = data.offers;
+        } catch {}
+
+        setRecos(computeRecommendations(prices, cardIds, liveOffers));
+      } catch { setNoData(true); }
+    }
+
+    compute();
   }, [loaded, profile.cardIds]);
 
   const best = recos[0];
