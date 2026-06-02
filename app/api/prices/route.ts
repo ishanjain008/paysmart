@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { searchAmazonProduct } from '@/lib/amazon-api';
 
 type Platform = 'amazon' | 'flipkart' | 'croma' | 'vijay_sales' | 'reliance_digital';
 
@@ -148,15 +149,25 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q') ?? '';
   if (!q) return Response.json([]);
 
-  const [{ prices: live, productImage }, flipkartPrice, vijayPrice, mock] = await Promise.all([
+  const [{ prices: live, productImage }, flipkartPrice, vijayPrice, mock, amazonData] = await Promise.all([
     fetchLivePrices(q),
     fetchFlipkartPrice(q),
     fetchVijayPrice(q),
     Promise.resolve(mockFallback(q)),
+    searchAmazonProduct(q),
   ]);
 
   if (flipkartPrice) live['flipkart']    = { price: flipkartPrice };
   if (vijayPrice)    live['vijay_sales'] = { price: vijayPrice };
+
+  // If we got Amazon data from Product Advertising API, use the direct link
+  if (amazonData) {
+    live['amazon'] = {
+      price: amazonData.price || live['amazon']?.price || 0,
+      title: amazonData.title,
+      link: amazonData.url,
+    };
+  }
 
   const prices: PlatformPrice[] = PLATFORMS.map((platform) => {
     const liveData = live[platform];

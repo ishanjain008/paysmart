@@ -40,7 +40,11 @@ function buyUrl(platform: string, query: string) {
 }
 
 function getProductLink(p: PlatformPrice, fallbackQuery: string): string {
-  // Use direct platform search with product title (more reliable than Serper's Google Shopping redirect)
+  // For Amazon, use direct product link from API if available (with affiliate tag)
+  if (p.platform === 'amazon' && p.link) {
+    return p.link;
+  }
+  // For other platforms or fallback, use search
   const searchQuery = p.title ? p.title.split(' ').slice(0, 4).join(' ') : fallbackQuery;
   return buyUrl(p.platform, searchQuery);
 }
