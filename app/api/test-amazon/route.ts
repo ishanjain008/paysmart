@@ -6,24 +6,33 @@ export async function GET(request: NextRequest) {
       ? `https://${process.env.VERCEL_URL}`
       : 'http://localhost:3000';
 
-    console.log('[test-amazon] Testing from:', baseUrl);
-    console.log('[test-amazon] Calling:', `${baseUrl}/api/amazon-search`);
+    console.log('[test-amazon] Testing POST routes');
 
-    const response = await fetch(`${baseUrl}/api/amazon-search`, {
+    // Test 1: Minimal POST route
+    console.log('[test-amazon] Test 1: Calling /api/test-post');
+    const testPostResponse = await fetch(`${baseUrl}/api/test-post`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test: 'hello' }),
+    });
+    console.log('[test-amazon] test-post status:', testPostResponse.status);
+    const testPostData = await testPostResponse.json();
+    console.log('[test-amazon] test-post response:', testPostData);
+
+    // Test 2: Amazon search route
+    console.log('[test-amazon] Test 2: Calling /api/amazon-search');
+    const amazonResponse = await fetch(`${baseUrl}/api/amazon-search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: 'iPhone 16' }),
     });
-
-    console.log('[test-amazon] Response status:', response.status);
-
-    const data = await response.json();
-    console.log('[test-amazon] Response data:', data);
+    console.log('[test-amazon] amazon-search status:', amazonResponse.status);
+    const amazonData = await amazonResponse.json();
+    console.log('[test-amazon] amazon-search response:', amazonData);
 
     return Response.json({
-      status: response.status,
-      success: response.ok,
-      data
+      testPost: { status: testPostResponse.status, data: testPostData },
+      amazonSearch: { status: amazonResponse.status, data: amazonData }
     });
   } catch (error) {
     console.error('[test-amazon] Error:', error);
