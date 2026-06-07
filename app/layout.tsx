@@ -27,6 +27,9 @@ export const metadata: Metadata = {
     description: 'Know your real best price — for the cards you carry.',
   },
   robots: { index: true, follow: true },
+  other: {
+    'verify-admitad': '02783d3c66',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
